@@ -16,12 +16,16 @@
   - Measurements and Codes to dataset metadata
 - Outputs RDF in Turtle format (`.ttl`) ready for use with standard RDF tools.
 
-## 📦 Installation
-
+## Installation
+From the repo root:
 ```bash
 git clone https://github.com/albertomarfoglia/meds2rdf.git
 cd meds2rdf
 pip install -e .
+```
+You can install it directly from GitHub:
+```bash
+pip install git+https://github.com/albertomarfoglia/meds2rdf.git
 ```
 
 ## How to Use
