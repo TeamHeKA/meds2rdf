@@ -3,7 +3,7 @@ from rdflib.namespace import RDF, XSD
 import uuid
 
 from ..namespace import MEDS, MEDS_INSTANCES
-from ..utils.rfd_utilis import if_column_is_present, to_literal
+from ..utils.rdf_utils import if_column_is_present, to_literal
 
 _literals_dict = {
     # Simple string or datetime fields

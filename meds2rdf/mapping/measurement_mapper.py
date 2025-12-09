@@ -3,7 +3,7 @@ from rdflib.namespace import RDF, XSD
 import uuid
 from typing import Optional, Iterable
 from ..namespace import MEDS, MEDS_INSTANCES, PROV
-from ..utils.rfd_utilis import *
+from ..utils.rdf_utils import *
 
 _literals_dict = {
     "time": (MEDS.time, XSD.dateTime),
