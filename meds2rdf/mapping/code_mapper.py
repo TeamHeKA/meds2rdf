@@ -33,7 +33,7 @@ def map_code(
     if_column_is_present("description", row, lambda v: g.add((code_uri, MEDS.codeDescription, to_literal(v, XSD.string))))
 
     def process_parent_code(v: str):
-        return g.add((code_uri, MEDS.parentCode, add_code(code_str=curie_to_uri(v), graph=g)))
+        return g.add((code_uri, MEDS.parentCode, add_code(code_str=curie_to_uri(v), graph=g, external=True)))
 
     if_column_is_present("parent_codes", row, process_parent_code)
 
