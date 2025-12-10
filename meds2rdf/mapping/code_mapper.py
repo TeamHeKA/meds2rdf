@@ -30,14 +30,12 @@ def map_code(
     code_str = try_access_mandatory_field_value(row=row, field="code", entity="Code")
     code_uri = add_code(code_str=code_str, graph=g, dataset_uri=dataset_uri)
 
-    opt_lit_dict = {
-        "description": (MEDS.codeDescription, XSD.string),
-    }
+    if_column_is_present("description", row, lambda v: g.add((code_uri, MEDS.codeDescription, to_literal(v, XSD.string))))
 
-    for column_name, (p, dtype) in opt_lit_dict.items():
-        if_column_is_present(column_name, row, lambda v: g.add((code_uri, p, to_literal(v, dtype))))
+    def process_parent_code(v: str):
+        return g.add((code_uri, MEDS.parentCode, add_code(code_str=curie_to_uri(v), graph=g)))
 
-    if_column_is_present("parent_codes", row, lambda v: g.add((code_uri, MEDS.parentCode, add_code(code_str=v, graph=g))))
+    if_column_is_present("parent_codes", row, process_parent_code)
 
     return code_uri
 

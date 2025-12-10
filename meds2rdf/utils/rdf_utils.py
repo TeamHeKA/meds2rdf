@@ -3,7 +3,7 @@ from rdflib import Literal, RDF, Node, URIRef, Graph
 from rdflib.namespace import XSD
 from datetime import datetime
 from typing import Optional, Callable, Iterable
-from ..namespace import MEDS, MEDS_INSTANCES, PROV
+from ..namespace import MEDS, MEDS_INSTANCES, PROV, PREFIX_MAP_BIOPORTAL
 
 def to_literal(value, dtype):
     if isinstance(value, datetime):
@@ -38,3 +38,9 @@ def to_subject_node(subject_id: str) -> URIRef:
     if (subject_uri := URIRef(base=MEDS_INSTANCES, value=f"subject/{subject_id}")) is None:
         raise ValueError(f"Cannot create subject uri with id: ${subject_id}")
     return subject_uri
+
+def curie_to_uri(curie: str, prefix_map: dict = PREFIX_MAP_BIOPORTAL) -> str:
+    prefix, local = curie.split(":", 1)
+    if prefix not in prefix_map:
+        raise ValueError(f"Unknown prefix: {prefix}")
+    return prefix_map[prefix] + local
