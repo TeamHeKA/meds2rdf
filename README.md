@@ -2,7 +2,7 @@
 
 **Convert MEDS datasets into RDF using the MEDS Ontology**
 
-[MEDS](https://medical-event-data-standard.github.io/) (Medical Event Data Standard) is a standard schema for representing longitudinal medical event data. This library, `meds2rdf`, converts MEDS-compliant datasets into RDF triples using the [MEDS Ontology](https://hekameds.github.io/meds-ontology).
+[MEDS](https://medical-event-data-standard.github.io/) (Medical Event Data Standard) is a standard schema for representing longitudinal medical event data. This library, `meds2rdf`, converts MEDS-compliant datasets into RDF triples using the [MEDS Ontology](https://teamheka.github.io/meds-ontology).
 
 ## Features
 
@@ -19,13 +19,13 @@
 ## Installation
 From the repo root:
 ```bash
-git clone https://github.com/HeKaMEDS/meds2rdf.git
+git clone https://github.com/TeamHeKA/meds2rdf.git
 cd meds2rdf
 pip install -e .
 ```
 You can install it directly from GitHub:
 ```bash
-pip install git+https://github.com/HeKaMEDS/meds2rdf.git
+pip install git+https://github.com/TeamHeKA/meds2rdf.git
 ```
 
 ## How to Use
@@ -108,6 +108,6 @@ If you use `meds2rdf` in your research, please cite it as follows:
   title        = {meds2rdf: Converting MEDS Datasets to RDF Using the MEDS Ontology},
   author       = {{Alberto Marfoglia and Contributors}},
   year         = {2025},
-  url          = {https://github.com/HeKaMEDS/meds2rdf},
+  url          = {https://github.com/TeamHeKA/meds2rdf},
   note         = {Python library for converting MEDS-compliant datasets into RDF}
 }

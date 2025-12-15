@@ -12,7 +12,7 @@ setup(
     ],
     python_requires='>=3.8',
     description="Convert MEDS datasets into RDF using the MEDS Ontology",
-    url="https://github.com/HeKaMEDS/meds2rdf",
+    url="https://github.com/TeamHeKA/meds2rdf",
     author="Alberto Marfoglia",
     author_email="a.marfoglia@hotmail.it",
     license="MIT",

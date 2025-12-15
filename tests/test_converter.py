@@ -150,7 +150,7 @@ mock_labels = [
 ]
 
 # Path to the remote SHACL shapes you want to validate against:
-SHACL_SHAPES_URL = "https://raw.githubusercontent.com/HeKaMEDS/meds-ontology/refs/heads/main/shacl/meds-shapes.ttl"
+SHACL_SHAPES_URL = "https://raw.githubusercontent.com/TeamHeKA/meds-ontology/refs/heads/main/shacl/meds-shapes.ttl"
 
 
 def test_convert_and_validate_shacl(monkeypatch):
