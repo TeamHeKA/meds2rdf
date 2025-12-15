@@ -40,7 +40,6 @@ commit_parser = "conventional"
 logging_use_named_masks = false
 major_on_zero = true
 allow_zero_version = false
-repo_dir = "/home/amarf/workspace/heka-team/meds2rdf"
 no_git_verify = false
 tag_format = "v{version}"
 add_partial_tags = false
