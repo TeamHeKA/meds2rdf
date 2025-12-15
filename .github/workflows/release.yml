@@ -19,6 +19,14 @@ jobs:
         uses: actions/checkout@v3
         with:
           fetch-depth: 0  # important: fetch all commits and tags
+          fetch-tags: true
+
+      - name: Create initial tag if missing
+        run: |
+          if [ -z "$(git tag -l 'v*')" ]; then
+            git tag v0.1.0
+            git push origin v0.1.0
+          fi
 
       # Step 2: Set up Python
       - name: Set up Python
