@@ -58,7 +58,7 @@ mode = "update"
 insertion_flag = "<!-- version list -->"
 template_dir = "templates"
 
-[tool.semantic_release.changelog.default_templates]
+[tool.semantic_release.changelog.default_templates.changelog_file]
 changelog_file = "CHANGELOG.md"
 output_format = "md"
 mask_initial_release = true
