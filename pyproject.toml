@@ -1,3 +1,31 @@
+[project]
+name = "meds2rdf"
+version = "0.1.0"
+description = "Convert MEDS datasets into RDF using the MEDS Ontology"
+authors = [
+  { name = "Alberto Marfoglia and Contributors" }
+]
+readme = "README.md"
+requires-python = ">=3.12"
+license = { file = "LICENSE" }
+
+# Runtime dependencies (used by users of your library)
+dependencies = [
+  "polars>=1.36.0,<2.0.0",
+  "polars-runtime-32>=1.36.0,<2.0.0",
+  "pyparsing>=3.2.5,<4.0.0",
+  "rdflib>=7.5.0,<8.0.0",
+  "pyshacl>=0.30.1,<1.0.0",
+  "setuptools>=80.9.0"
+]
+
+# Optional development dependencies
+[project.optional-dependencies]
+dev = [
+  "pytest>=9.0.2,<10.0.0",
+  "python-semantic-release>=9.0.0"
+]
+
 [build-system]
 requires = ["setuptools>=42", "wheel"]
 build-backend = "setuptools.build_meta"
