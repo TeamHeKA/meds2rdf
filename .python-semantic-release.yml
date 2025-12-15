@@ -1,5 +1,0 @@
-version_source: tag
-branch: main
-upload_to_pypi: false  # set to false if you don't want PyPI release
-check_build_status: false
-commit_message_versioning: true

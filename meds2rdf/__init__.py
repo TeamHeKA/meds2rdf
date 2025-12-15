@@ -2,8 +2,8 @@
 
 
 from .converter import MedsRDFConverter
-
+from importlib.metadata import version as get_version
 
 __all__ = ["MedsRDFConverter"]
 
-__version__ = "0.1.0"
+__version__ = get_version("meds2rdf")
