@@ -1,11 +1,12 @@
 # .releaserc.toml
-[semantic_release]
+[tool.semantic_release]
+version_source = "tag"
 version_variable = "pyproject.toml:project.version"
 branch = "main"
 tag_format = "v{version}" 
 
 # GitHub release publisher
-[semantic_release.publisher.github]
+[tool.semantic_release.publisher.github]
 enabled = true
 token = "env:GH_TOKEN"  # GitHub Actions secret
 
