@@ -1,56 +1,38 @@
 name: Release
 
-# Trigger only on direct pushes to main (change branch if needed)
 on:
   push:
     branches:
       - main
 
-permissions:
-  # Allow writing releases + pushes if semantic-release needs to update files/tags
-  contents: write
-  # Allows publishing GitHub Releases
-  id-token: write
-
 jobs:
   release:
-    name: "📦 Semantic Release"
     runs-on: ubuntu-latest
-    concurrency:
-      group: release
-      cancel-in-progress: true
+    permissions:
+      contents: write
+      packages: write
+      id-token: write
 
     steps:
-      # Always fetch full history so semantic-release sees all commits/tags
       - name: Checkout repository
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
 
-      # Set up a Python environment
-      - name: Setup Python
-        uses: actions/setup-python@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
         with:
-          python-version: "3.9"
+          python-version: '3.12'
 
-      # Install dependencies (including python‑semantic‑release)
-      - name: Install dependencies
+      - name: Install package with dev dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install python-semantic-release
+          pip install .[dev]
 
-      # Run semantic-release to version & publish the release
-      - name: Run Python Semantic Release
+      - name: Run tests
+        run: |
+          pytest tests/
+
+      - name: Bump version and create GitHub release
         env:
-          # Token used to create GitHub tag & publish Release
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          # Optional: identify the CI commits with a user for git pushes
-          git config --global user.name "github-actions"
-          git config --global user.email "actions@github.com"
-          # The publish command will:
-          #   • determine the new version from commits
-          #   • update version metadata
-          #   • tag and push tag
-          #   • create a GitHub Release with change notes
           semantic-release publish
