@@ -1,4 +1,4 @@
-from rdflib import Graph, URIRef, Namespace, Literal
+from rdflib import Graph, URIRef
 from rdflib.namespace import RDF, RDFS, XSD, DCTERMS as DCT, PROV, DCAT
 import uuid
 

@@ -1,9 +1,9 @@
 from typing import Callable, Iterable
-from rdflib import Literal, RDF, Namespace, URIRef, Graph
+from rdflib import Literal, RDF, URIRef, Graph, PROV
 from rdflib.namespace import XSD
 from datetime import datetime
 from typing import Optional, Callable, Iterable
-from ..namespace import MEDS, MEDS_INSTANCES, PROV, PREFIX_MAP_BIOPORTAL
+from ..namespace import MEDS, MEDS_INSTANCES, PREFIX_MAP_BIOPORTAL
 
 def to_literal(value, dtype):
     if isinstance(value, datetime):

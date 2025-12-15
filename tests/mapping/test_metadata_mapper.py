@@ -1,4 +1,4 @@
-from rdflib import Graph, Literal, XSD, URIRef, RDF, RDFS, Namespace, DCAT, PROV, DCTERMS as DCT
+from rdflib import Graph, Literal, XSD, URIRef, RDF, RDFS, DCAT, PROV, DCTERMS as DCT
 from meds2rdf.mapping.metadata_mapper import map_dataset_metadata
 from meds2rdf.namespace import MEDS, MEDS_INSTANCES
 

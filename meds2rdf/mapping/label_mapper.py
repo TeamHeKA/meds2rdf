@@ -1,7 +1,7 @@
 import uuid
-from rdflib import Graph, URIRef, RDF, XSD
+from rdflib import Graph, URIRef, RDF, XSD, PROV
 from typing import Iterable, Optional
-from ..namespace import MEDS, MEDS_INSTANCES, PROV
+from ..namespace import MEDS, MEDS_INSTANCES
 from ..utils.rdf_utils import *
 
 _literals_dict = {

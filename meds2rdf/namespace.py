@@ -1,8 +1,7 @@
 from rdflib import Namespace
 
-MEDS = Namespace("https://albertomarfoglia.github.io/meds-ontology#")
-MEDS_INSTANCES = Namespace("https://albertomarfoglia.github.io/meds-data/")
-PROV = Namespace("http://www.w3.org/ns/prov#")
+MEDS = Namespace("https://hekameds.github.io/meds-ontology#")
+MEDS_INSTANCES = Namespace("https://hekameds.github.io/meds-data/")
 
 PREFIX_MAP_BIOPORTAL = {
     "ATC":      "http://purl.bioontology.org/ontology/ATC",

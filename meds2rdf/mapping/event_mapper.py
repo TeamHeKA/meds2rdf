@@ -1,8 +1,8 @@
 from rdflib import Graph, URIRef, Literal
-from rdflib.namespace import RDF, XSD
+from rdflib.namespace import RDF, XSD, PROV
 import uuid
 from typing import Optional, Iterable
-from ..namespace import MEDS, MEDS_INSTANCES, PROV
+from ..namespace import MEDS, MEDS_INSTANCES
 from ..utils.rdf_utils import *
 
 _literals_dict = {

@@ -2,7 +2,7 @@
 
 **Convert MEDS datasets into RDF using the MEDS Ontology**
 
-[MEDS](https://medical-event-data-standard.github.io/) (Medical Event Data Standard) is a standard schema for representing longitudinal medical event data. This library, `meds2rdf`, converts MEDS-compliant datasets into RDF triples using the [MEDS Ontology](https://albertomarfoglia.github.io/meds-ontology).
+[MEDS](https://medical-event-data-standard.github.io/) (Medical Event Data Standard) is a standard schema for representing longitudinal medical event data. This library, `meds2rdf`, converts MEDS-compliant datasets into RDF triples using the [MEDS Ontology](https://hekameds.github.io/meds-ontology).
 
 ## Features
 
@@ -19,13 +19,13 @@
 ## Installation
 From the repo root:
 ```bash
-git clone https://github.com/albertomarfoglia/meds2rdf.git
+git clone https://github.com/HeKaMEDS/meds2rdf.git
 cd meds2rdf
 pip install -e .
 ```
 You can install it directly from GitHub:
 ```bash
-pip install git+https://github.com/albertomarfoglia/meds2rdf.git
+pip install git+https://github.com/HeKaMEDS/meds2rdf.git
 ```
 
 ## How to Use
@@ -63,3 +63,51 @@ print("Conversion complete! RDF files saved.")
   * `data/` folder with Parquet files
   * `labels/` folder with label Parquet files
 * The `convert` method returns an `rdflib.Graph` object that you can further manipulate or serialize.
+
+
+Here’s a clean **“How to run tests”** section you can drop straight into your README. It matches your project structure and the earlier import issue you hit.
+
+---
+
+## Running Tests
+
+This project uses **pytest**.
+
+### Install development dependencies
+
+From the repository root:
+
+```bash
+pip install -e .[dev]
+```
+
+If you don’t have optional dev dependencies set up, install pytest manually:
+
+```bash
+pip install pytest
+```
+
+> Installing in **editable mode (`-e`)** is important so Python can import the `meds2rdf` package during tests.
+
+### Run the full test suite
+
+From the repository root:
+
+```bash
+pytest
+```
+
+
+## Cite this Repository
+
+If you use `meds2rdf` in your research, please cite it as follows:
+
+### BibTeX
+```bibtex
+@software{meds2rdf,
+  title        = {meds2rdf: Converting MEDS Datasets to RDF Using the MEDS Ontology},
+  author       = {{Alberto Marfoglia and Contributors}},
+  year         = {2025},
+  url          = {https://github.com/HeKaMEDS/meds2rdf},
+  note         = {Python library for converting MEDS-compliant datasets into RDF}
+}
