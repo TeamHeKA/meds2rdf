@@ -1,53 +1,56 @@
 name: Release
 
+# Trigger only on direct pushes to main (change branch if needed)
 on:
   push:
     branches:
       - main
 
 permissions:
-  contents: write  # needed to push commits and tags
-    
+  # Allow writing releases + pushes if semantic-release needs to update files/tags
+  contents: write
+  # Allows publishing GitHub Releases
+  id-token: write
+
 jobs:
   release:
-    name: Semantic Release
+    name: "📦 Semantic Release"
     runs-on: ubuntu-latest
+    concurrency:
+      group: release
+      cancel-in-progress: true
 
     steps:
-      # Step 1: Checkout repository with full history and tags
+      # Always fetch full history so semantic-release sees all commits/tags
       - name: Checkout repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
-          fetch-depth: 0  # important: fetch all commits and tags
-          fetch-tags: true
+          fetch-depth: 0
 
-      # Step 2: Set up Python
-      - name: Set up Python
+      # Set up a Python environment
+      - name: Setup Python
         uses: actions/setup-python@v4
         with:
-          python-version: "3.12"
-          cache: "pip"
+          python-version: "3.9"
 
-      # Step 3: Install dependencies
+      # Install dependencies (including python‑semantic‑release)
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install --upgrade python-semantic-release setuptools wheel twine
+          pip install python-semantic-release
 
-      # Step 4: Configure Git (required for tagging)
-      - name: Configure Git
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-
-      # Step 5: Debug - List tags (optional, useful first run)
-      - name: List tags
-        run: git tag
-
-      # Step 6: Run Semantic Release
-      - name: Run semantic-release
+      # Run semantic-release to version & publish the release
+      - name: Run Python Semantic Release
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}          # GitHub releases
-          #PYPI_API_TOKEN: ${{ secrets.PYPI_API_TOKEN }}  # PyPI upload
+          # Token used to create GitHub tag & publish Release
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          # Optional: identify the CI commits with a user for git pushes
+          git config --global user.name "github-actions"
+          git config --global user.email "actions@github.com"
+          # The publish command will:
+          #   • determine the new version from commits
+          #   • update version metadata
+          #   • tag and push tag
+          #   • create a GitHub Release with change notes
           semantic-release publish

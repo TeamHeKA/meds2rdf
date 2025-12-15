@@ -30,3 +30,8 @@ dev = [
 [build-system]
 requires = ["setuptools>=42", "wheel"]
 build-backend = "setuptools.build_meta"
+
+[tool.semantic_release]
+version_variable = ["meds2rdf/__init__.py:__version__"]
+branch = "main"
+upload_to_release = true
