@@ -1,5 +1,0 @@
-[semantic_release]
-version_variable = "pyproject.toml:version"
-upload_to_pypi = false
-commit_source_date = true
-branch = main

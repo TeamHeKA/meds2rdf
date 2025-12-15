@@ -1,0 +1,18 @@
+# .releaserc.toml
+[semantic_release]
+version_variable = "setup.py:version"
+branch = "main"
+tag_format = "v{version}" 
+
+[semantic_release.publisher]
+# GitHub publisher
+[semantic_release.publisher.github]
+enabled = true
+token = "env:GH_TOKEN"  # uses GH_TOKEN from GitHub Actions secrets
+
+[tool.semantic_release.changelog]
+changelog_file = "CHANGELOG.md"
+
+[tool.semantic_release.commit_author]
+name = "github-actions[bot]"
+email = "github-actions[bot]@users.noreply.github.com"
