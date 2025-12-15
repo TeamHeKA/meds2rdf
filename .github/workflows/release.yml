@@ -17,6 +17,9 @@ jobs:
       # Step 1: Checkout repository with full history and tags
       - name: Checkout repository
         uses: actions/checkout@v3
+        with:
+          fetch-depth: 0  # important: fetch all commits and tags
+          fetch-tags: true
 
       # Step 2: Set up Python
       - name: Set up Python
@@ -36,6 +39,10 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      # Step 5: Debug - List tags (optional, useful first run)
+      - name: List tags
+        run: git tag
 
       # Step 6: Run Semantic Release
       - name: Run semantic-release
