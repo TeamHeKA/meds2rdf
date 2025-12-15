@@ -1,14 +1,13 @@
 # .releaserc.toml
 [semantic_release]
-version_variable = "setup.py:version"
+version_variable = "pyproject.toml:project.version"
 branch = "main"
 tag_format = "v{version}" 
 
-[semantic_release.publisher]
-# GitHub publisher
+# GitHub release publisher
 [semantic_release.publisher.github]
 enabled = true
-token = "env:GH_TOKEN"  # uses GH_TOKEN from GitHub Actions secrets
+token = "env:GH_TOKEN"  # GitHub Actions secret
 
 [tool.semantic_release.changelog]
 changelog_file = "CHANGELOG.md"
