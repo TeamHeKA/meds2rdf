@@ -43,7 +43,7 @@ allow_zero_version = false
 no_git_verify = false
 tag_format = "v{version}"
 add_partial_tags = false
-build_command = "python -m build --sdist --wheel ."
+build_command = false
 
 [tool.semantic_release.build]
 requires = ["build"]
