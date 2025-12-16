@@ -45,6 +45,9 @@ tag_format = "v{version}"
 add_partial_tags = false
 build_command = "python -m build --sdist --wheel ."
 
+[tool.semantic_release.build]
+requires = ["build"]
+
 [tool.semantic_release.branches.main]
 match = "(main|master)"
 prerelease_token = "rc"
