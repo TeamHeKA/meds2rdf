@@ -2,6 +2,24 @@
 
 <!-- version list -->
 
+## v1.0.1 (2025-12-16)
+
+### Bug Fixes
+
+- Trigger release for Zenodo doi generation
+  ([`2726449`](https://github.com/TeamHeKA/meds2rdf/commit/2726449f62704d91e7e49aff737570eac2905fc0))
+
+### Build System
+
+- Change polars to 1.30 [slip-ci]
+  ([`f6229c9`](https://github.com/TeamHeKA/meds2rdf/commit/f6229c9353cd960cbfd9d7bb3e7ef53d0e2fea7e))
+
+### Refactoring
+
+- Align polars version to MEDS-extract
+  ([`8e3ce2a`](https://github.com/TeamHeKA/meds2rdf/commit/8e3ce2a8559f90123b63535465d1b0f0e2ce4d9b))
+
+
 ## v1.0.0 (2025-12-16)
 
 ### Build System
