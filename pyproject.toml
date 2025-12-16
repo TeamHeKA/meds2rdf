@@ -1,6 +1,6 @@
 [project]
 name = "meds2rdf"
-version = "0.1.0"
+version = "1.0.0"
 description = "Convert MEDS datasets into RDF using the MEDS Ontology"
 authors = [
   { name = "Alberto Marfoglia and Contributors", email = "a.marfoglia@hotmail.it" }
