@@ -1,4 +1,15 @@
-# meds2rdf
+<h1 align="center">MEDS2RDF</h1>
+
+<p align="center">
+  <img src="https://img.shields.io/github/v/release/TeamHeKA/meds2rdf" alt="Latest Release"/>
+  <img src="https://github.com/TeamHeKA/meds2rdf/actions/workflows/tests.yml/badge.svg" alt="Tests"/>
+  <img
+    src="https://img.shields.io/badge/python-3.10%20%7C%203.11%20%7C%203.12-blue"
+    alt="Python 3.12"
+  />
+  <img src="https://img.shields.io/github/license/TeamHeKA/meds2rdf" alt="License"/>
+  <a href="https://doi.org/10.5281/zenodo.17953581"><img src="https://zenodo.org/badge/DOI/10.5281/zenodo.17953581.svg" alt="DOI"></a>
+</p>
 
 **Convert MEDS datasets into RDF using the MEDS Ontology**
 
