@@ -4,7 +4,7 @@
   <img src="https://img.shields.io/github/v/release/TeamHeKA/meds2rdf" alt="Latest Release"/>
   <img src="https://github.com/TeamHeKA/meds2rdf/actions/workflows/tests.yml/badge.svg" alt="Tests"/>
   <img
-    src="https://img.shields.io/badge/python-3.10%20%7C%203.11%20%7C%203.12-blue"
+    src="https://img.shields.io/badge/python-3.12-blue"
     alt="Python 3.12"
   />
   <img src="https://img.shields.io/github/license/TeamHeKA/meds2rdf" alt="License"/>
