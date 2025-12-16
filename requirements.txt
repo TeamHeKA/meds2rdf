@@ -1,7 +1,0 @@
-polars==1.36.0
-polars-runtime-32==1.36.0
-pyparsing==3.2.5
-rdflib==7.5.0
-setuptools==80.9.0
-pyshacl==0.30.1
-pytest==9.0.2

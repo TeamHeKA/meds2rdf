@@ -11,8 +11,8 @@ license = { file = "LICENSE" }
 
 # Runtime dependencies (used by users of your library)
 dependencies = [
-  "polars>=1.36.0,<2.0.0",
-  "polars-runtime-32>=1.36.0,<2.0.0",
+  "polars<0.20",
+  "polars-runtime-32<0.20",
   "pyparsing>=3.2.5,<4.0.0",
   "rdflib>=7.5.0,<8.0.0",
   "pyshacl>=0.30.1,<1.0.0",
