@@ -53,7 +53,8 @@ graph = converter.convert(
     include_codes=True,
     include_labels=True,
     include_splits=True,
-    generate_code_nodes=False
+    generate_code_nodes=False,
+    shacl_path=None
 )
 
 # Serialize the graph to different formats

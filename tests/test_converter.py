@@ -1,7 +1,5 @@
 # tests/test_shacl_validation.py
-import pytest
 from rdflib import Graph
-from pyshacl import validate
 from meds2rdf.converter import MedsRDFConverter
 
 # You can reuse your mocks from previous tests:
@@ -150,7 +148,7 @@ mock_labels = [
 ]
 
 # Path to the remote SHACL shapes you want to validate against:
-SHACL_SHAPES_URL = "https://raw.githubusercontent.com/TeamHeKA/meds-ontology/refs/heads/main/shacl/meds-shapes.ttl"
+SHACL_SHAPES_URL = "https://raw.githubusercontent.com/TeamHeKA/meds-ontology/refs/tags/v1.0.2/shacl/meds-shapes.ttl"
 
 
 def test_convert_and_validate_shacl(monkeypatch):
@@ -159,8 +157,6 @@ def test_convert_and_validate_shacl(monkeypatch):
     """
 
     # -- 1. Mock out filesystem + read_parquet just like in your previous test
-    import polars as pl
-    from pathlib import Path
     import json
     from unittest.mock import MagicMock, mock_open, patch
 
@@ -182,27 +178,8 @@ def test_convert_and_validate_shacl(monkeypatch):
             include_codes=True,
             include_labels=True,
             include_splits=True,
+            shacl_path=SHACL_SHAPES_URL
         )
 
     # Sanity check — we *have* an rdflib.Graph
     assert isinstance(data_graph, Graph)
-
-    # -- 2. Load shapes graph
-    shapes_graph = Graph()
-    shapes_graph.parse(SHACL_SHAPES_URL, format="ttl")
-
-    data_graph.print()
-
-    # -- 3. Validate with pySHACL
-    conforms, results_graph, results_text = validate(
-        data_graph,
-        shacl_graph=shapes_graph,
-        inference="rdfs",      # optional
-        abort_on_first=False,
-        allow_infos=True,
-        allow_warnings=True,
-    )
-
-    print(results_text)  # helpful if the test fails
-
-    assert conforms, "SHACL validation failed:\n" + results_text

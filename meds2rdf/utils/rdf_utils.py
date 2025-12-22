@@ -1,9 +1,26 @@
+from pathlib import Path
 from typing import Callable, Iterable
 from rdflib import Literal, RDF, URIRef, Graph, PROV
 from rdflib.namespace import XSD
 from datetime import datetime
 from typing import Optional, Callable, Iterable
 from ..namespace import MEDS, MEDS_INSTANCES, PREFIX_MAP_BIOPORTAL
+
+from pyshacl import validate
+
+def run_shacl_validation(graph: Graph, shacl_file: str | Path):
+    conforms, results_graph, results_text = validate(
+        data_graph=graph,
+        shacl_graph=str(shacl_file),
+        inference='rdfs',
+        abort_on_first=False,
+        debug=False
+    )
+
+    if not conforms:
+        raise ValueError(f"SHACL validation failed. {results_text}\n{results_graph}")
+
+    return conforms
 
 def to_literal(value, dtype):
     if isinstance(value, datetime):

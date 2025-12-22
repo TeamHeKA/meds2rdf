@@ -7,4 +7,5 @@ __all__ = [
     "if_column_is_present",
     "add_code",
     "to_subject_node",
+    "run_shacl_validation"
 ]

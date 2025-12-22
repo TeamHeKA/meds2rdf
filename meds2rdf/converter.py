@@ -3,6 +3,7 @@ from pathlib import Path
 from rdflib import Graph
 import polars as pl
 import json
+from pyshacl import validate
 
 from .mapping.event_mapper import map_data_table
 from .mapping.code_mapper import map_code_table
@@ -10,7 +11,8 @@ from .mapping.label_mapper import map_label_table
 from .mapping.split_mapper import map_split_table
 from .mapping.metadata_mapper import map_dataset_metadata
 
-from meds2rdf.namespace import MEDS
+from .namespace import MEDS
+from .utils.rdf_utils import run_shacl_validation
 
 class MedsRDFConverter:
     """
@@ -31,6 +33,7 @@ class MedsRDFConverter:
         include_codes=True,
         include_labels=False,
         include_splits=False,
+        shacl_path: str | Path | None=None
     ):
         """
         Convert an entire MEDS dataset directory to RDF.
@@ -73,6 +76,9 @@ class MedsRDFConverter:
             label_files = list((self.meds_root / "labels").rglob("*.parquet"))
             labels = [row for f in label_files for row in pl.read_parquet(str(f)).to_dicts()]
             map_label_table(self.graph, labels, dataset_uri)
+
+        if shacl_path is not None: 
+            run_shacl_validation(self.graph, shacl_path)
 
         return self.graph
 
