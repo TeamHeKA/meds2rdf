@@ -49,15 +49,18 @@ def add_code(code_str: str, graph: Graph, dataset_uri: Optional[URIRef] = None, 
     if external: 
         code_uri = curie_to_uri(code_str)
     else: 
-        code_uri = URIRef(MEDS_INSTANCES[f"code/{quote(code_str)}"])
+        code_uri = URIRef(MEDS_INSTANCES[f"code/{quote(code_str).replace("//", "_")}"])
 
-    graph.add((code_uri, RDF.type, MEDS.Code))
-    graph.add((code_uri, MEDS.codeString, Literal(str(code_str), datatype=XSD.string)))
-
-    if dataset_uri:
-        graph.add((code_uri, PROV.wasDerivedFrom, dataset_uri))
+    if node_exist(graph, node=code_uri) is False:
+        graph.add((code_uri, RDF.type, MEDS.Code))
+        graph.add((code_uri, MEDS.codeString, Literal(str(code_str), datatype=XSD.string)))
+        if dataset_uri:
+            graph.add((code_uri, PROV.wasDerivedFrom, dataset_uri))
         
     return code_uri
+
+def node_exist(graph: Graph, node: URIRef) -> bool:
+    return (node, None, None) in graph
 
 def to_subject_node(subject_id: str) -> URIRef:
     if (subject_uri := URIRef(MEDS_INSTANCES[f"subject/{subject_id}"])) is None:

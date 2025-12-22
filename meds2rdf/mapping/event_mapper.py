@@ -43,11 +43,13 @@ def map_event(
     # Subject
     # ---------------------------
     subject_id = try_access_mandatory_field_value(row=row, field="subject_id", entity="Event")
+    
     subject_uri = to_subject_node(subject_id)
-    g.add((event_uri, MEDS.hasSubject, subject_uri))
-    g.add((subject_uri, RDF.type, MEDS.Subject))
-    g.add((subject_uri, MEDS.subjectId, Literal(str(subject_id), datatype=XSD.string)))
+    if node_exist(g, node=subject_uri) is False:
+        g.add((subject_uri, RDF.type, MEDS.Subject))
+        g.add((subject_uri, MEDS.subjectId, Literal(str(subject_id), datatype=XSD.string)))
 
+    g.add((event_uri, MEDS.hasSubject, subject_uri))
     # ---------------------------
     # Code
     # ---------------------------

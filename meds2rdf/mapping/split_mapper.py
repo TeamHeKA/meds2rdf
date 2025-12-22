@@ -1,7 +1,7 @@
-from rdflib import Graph, URIRef
+from rdflib import RDF, Graph, Literal, URIRef
 from typing import Iterable
 from ..namespace import MEDS
-from ..utils.rdf_utils import try_access_mandatory_field_value, to_subject_node
+from ..utils.rdf_utils import node_exist, try_access_mandatory_field_value, to_subject_node
 
 _split_dict = {
     "train": MEDS.trainSplit,
@@ -32,6 +32,10 @@ def map_split(g: Graph, row: dict) -> URIRef:
     if (split_uri := _split_dict.get(assigned_split)) is None:
         raise ValueError(f"The given split name '{assigned_split}' is not valid")
 
+    if node_exist(g, node=split_uri) is False:
+        g.add((split_uri, RDF.type, MEDS.SubjectSplit))
+        g.add((split_uri, MEDS.splitName, Literal(assigned_split)))
+        
     g.add((to_subject_node(subject_id), MEDS.assignedSplit, split_uri))
     return split_uri
 
