@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Callable, Iterable
+from typing import Callable, Iterable, Mapping
 from rdflib import Literal, RDF, URIRef, Graph, PROV
 from rdflib.namespace import XSD
 from datetime import datetime
@@ -67,8 +67,24 @@ def to_subject_node(subject_id: str) -> URIRef:
         raise ValueError(f"Cannot create subject uri with id: ${subject_id}")
     return subject_uri
 
-def curie_to_uri(curie: str, prefix_map: dict = PREFIX_MAP_BIOPORTAL) -> URIRef:
-    prefix, local = curie.split(":", 1)
-    if prefix not in prefix_map:
-        raise ValueError(f"Unknown prefix: {prefix}")
-    return URIRef(f"{prefix_map[prefix]}/{local}")
+def curie_to_uri(
+    curie: str,
+    prefix_map: Mapping[str, str] = PREFIX_MAP_BIOPORTAL,
+) -> URIRef:
+    """
+    Convert a CURIE (e.g. 'LOINC:2347-3') or prefix-path
+    (e.g. 'LOINC/2347-3') to a full URI.
+
+    If the prefix is not found, the input is assumed to already
+    be a full URI and is returned as-is.
+    """
+    if curie is None: 
+        return 
+    
+    for sep in (":", "/"):
+        if sep in curie:
+            prefix, local = curie.split(sep, 1)
+            if prefix in prefix_map:
+                return URIRef(f"{prefix_map[prefix].rstrip('/')}/{local}")
+
+    return URIRef(curie)
