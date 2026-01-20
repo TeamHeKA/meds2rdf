@@ -4,6 +4,7 @@ from rdflib import Literal, RDF, URIRef, Graph, PROV
 from rdflib.namespace import XSD
 from datetime import datetime
 from typing import Optional, Callable, Iterable
+import re
 from ..namespace import MEDS, MEDS_INSTANCES, PREFIX_MAP_BIOPORTAL
 
 from pyshacl import validate
@@ -43,13 +44,20 @@ def if_column_is_present(column_name, source, callback: Callable[[str], Graph]):
     else:
         callback(str(value))
 
-from urllib.parse import quote
+NT_IRI_REGEX = re.compile(
+    r"^[a-zA-Z][a-zA-Z0-9+.-]*:[^\s<>\"{}|^`\\]+$"
+)
+    
+SAFE_CHARS = re.compile(r"[^A-Za-z0-9._-]")
+
+def is_valid_nt_iri(iri: str) -> bool:
+    return bool(NT_IRI_REGEX.match(iri))
 
 def add_code(code_str: str, graph: Graph, dataset_uri: Optional[URIRef] = None, external = False):
     if external: 
         code_uri = curie_to_uri(code_str)
-    else: 
-        code_uri = URIRef(MEDS_INSTANCES[f"code/{quote(code_str).replace("//", "_")}"])
+    else:
+        code_uri = URIRef(MEDS_INSTANCES[f"code/{SAFE_CHARS.sub("_", code_str.replace("//", "_"))}"])
 
     if node_exist(graph, node=code_uri) is False:
         graph.add((code_uri, RDF.type, MEDS.Code))
@@ -78,13 +86,14 @@ def curie_to_uri(
     If the prefix is not found, the input is assumed to already
     be a full URI and is returned as-is.
     """
-    if curie is None: 
-        return 
-    
     for sep in (":", "/"):
         if sep in curie:
             prefix, local = curie.split(sep, 1)
+            prefix = prefix.upper()
             if prefix in prefix_map:
                 return URIRef(f"{prefix_map[prefix].rstrip('/')}/{local}")
 
-    return URIRef(curie)
+    if is_valid_nt_iri(curie):
+        return URIRef(curie)
+    
+    return URIRef(MEDS_INSTANCES[f"code/{SAFE_CHARS.sub("_", curie)}"])
