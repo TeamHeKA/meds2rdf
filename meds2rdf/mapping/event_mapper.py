@@ -1,9 +1,10 @@
 from rdflib import Graph, URIRef, Literal
 from rdflib.namespace import RDF, XSD, PROV
 import uuid
-from typing import Optional, Iterable
+from typing import Optional
 from ..namespace import MEDS, MEDS_INSTANCES
 from ..utils.rdf_utils import *
+import polars as pl
 
 _literals_dict = {
     "time": (MEDS.time, XSD.dateTime),
@@ -71,7 +72,7 @@ def map_event(
 
 def map_data_table(
     g: Graph,
-    data: Iterable[dict],
+    data: pl.DataFrame,
     dataset_uri: Optional[URIRef] = None,
 ) -> list[URIRef]:
     """
@@ -81,8 +82,8 @@ def map_data_table(
     ----------
     g : Graph
         RDF graph to populate
-    data : Iterable[dict]
-        List of rows/dicts representing the MEDS DataSchema
+    data : pl.DataFrame
+        A polars lazy DataFrame representing the MEDS DataSchema
     dataset_uri : Optional[URIRef]
         URI of the dataset metadata to link all events to
     generate_code_node : bool
@@ -93,8 +94,13 @@ def map_data_table(
     list[URIRef]
         List of URIs of the created Event individuals
     """
+
     uris = []
-    for row in data:
-        event_uri = map_event(g, row, dataset_uri)
+
+    columns = data.columns
+    for row in data.iter_rows():
+        row_dict = dict(zip(columns, row))
+        event_uri = map_event(g, row_dict, dataset_uri)
         uris.append(event_uri)
+
     return uris

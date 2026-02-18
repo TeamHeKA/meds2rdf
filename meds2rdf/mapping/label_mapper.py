@@ -3,6 +3,7 @@ from rdflib import Graph, URIRef, RDF, XSD, PROV
 from typing import Iterable, Optional
 from ..namespace import MEDS, MEDS_INSTANCES
 from ..utils.rdf_utils import *
+import polars as pl
 
 _literals_dict = {
     "description": (MEDS.codeDescription, XSD.string),
@@ -50,7 +51,7 @@ def map_label(g: Graph, row: dict, dataset_uri: Optional[URIRef] = None) -> URIR
 
 def map_label_table(
     g: Graph,
-    data: Iterable[dict],
+    data: pl.DataFrame,
     dataset_uri: Optional[URIRef] = None,
 ) -> list[URIRef]:
     """
@@ -60,8 +61,8 @@ def map_label_table(
     ----------
     g : Graph
         RDF graph to populate
-    data : Iterable[dict]
-        List of rows/dicts representing the MEDS LabelSchema
+    data : pl.DataFrame
+        A polars lazy DataFrame representing the MEDS LabelSchema
     dataset_uri : Optional[URIRef]
         URI of the dataset metadata to link via prov:wasDerivedFrom
 
@@ -70,8 +71,13 @@ def map_label_table(
     list[URIRef]
         List of URIs of the created LabelSample individuals
     """
+
     uris = []
-    for row in data:
-        label_sample_uri = map_label(g, row, dataset_uri)
-        uris.append(label_sample_uri)
+
+    columns = data.columns
+    for row in data.iter_rows():
+        row_dict = dict(zip(columns, row))
+        label_uri = map_label(g, row_dict, dataset_uri)
+        uris.append(label_uri)
+
     return uris

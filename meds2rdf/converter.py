@@ -13,6 +13,7 @@ from .mapping.metadata_mapper import map_dataset_metadata
 
 from .namespace import MEDS
 from .utils.rdf_utils import run_shacl_validation
+from .utils.load_utils import on_parquet
 
 class MedsRDFConverter:
     """
@@ -54,28 +55,44 @@ class MedsRDFConverter:
                 dataset_uri = map_dataset_metadata(self.graph, meta)
 
         # 2. Data tables
-        data = pl.read_parquet(str(self.meds_root / "data/**/*.parquet")).to_dicts()
-        map_data_table(self.graph, data, dataset_uri)
+        on_parquet(
+            files_path=list((self.meds_root / "data").rglob("*.parquet")), 
+            run=lambda x: map_data_table(self.graph, x, dataset_uri)
+        )
 
         # 3. Codes
         if include_codes:
             code_file = self.meds_root / "metadata/codes.parquet"
             if code_file.exists():
-                codes = pl.read_parquet(str(code_file)).to_dicts()
-                map_code_table(self.graph, codes, dataset_uri)
+                on_parquet(
+                    files_path=[code_file], 
+                    run=lambda x: map_code_table(self.graph, x, dataset_uri)
+                )
 
         # 4. Subject splits
         if include_splits:
             split_file = self.meds_root / "metadata/subject_splits.parquet"
             if split_file.exists():
-                splits = pl.read_parquet(str(split_file)).to_dicts()
-                map_split_table(self.graph, splits)
+                on_parquet(
+                    files_path=[split_file], 
+                    run=lambda x: map_split_table(self.graph, x)
+                )
 
         # 5. Labels
         if include_labels:
-            label_files = list((self.meds_root / "labels").rglob("*.parquet"))
-            labels = [row for f in label_files for row in pl.read_parquet(str(f)).to_dicts()]
-            map_label_table(self.graph, labels, dataset_uri)
+            labels_root: Path = (self.meds_root / "labels")
+ 
+            for task_dir in labels_root.iterdir():
+                if not task_dir.is_dir():
+                    continue
+                parquet_files = list(task_dir.rglob("*.parquet"))
+                if not parquet_files:
+                    continue
+
+                on_parquet(
+                    files_path=parquet_files,
+                    run=lambda x: map_label_table(self.graph, x)
+                )
 
         if shacl_path is not None: 
             run_shacl_validation(self.graph, shacl_path)

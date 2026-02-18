@@ -3,6 +3,7 @@ from rdflib.namespace import XSD
 from typing import Optional, Iterable
 from ..namespace import MEDS
 from ..utils.rdf_utils import *
+import polars as pl
 
 def map_code(
     g: Graph,
@@ -44,7 +45,7 @@ def map_code(
 
 def map_code_table(
     g: Graph,
-    data: Iterable[dict],
+    data: pl.DataFrame,
     dataset_uri: Optional[URIRef] = None
 ) -> list[URIRef]:
     """
@@ -55,7 +56,7 @@ def map_code_table(
     g : Graph
         RDF graph to populate
     data : Iterable[dict]
-        List of rows/dicts representing the MEDS CodeSchema
+        A polars lazy DataFrame representing the MEDS CodeSchema
     dataset_uri : Optional[URIRef]
         URI of the dataset metadata to link all codes to
 
@@ -64,8 +65,13 @@ def map_code_table(
     list[URIRef]
         List of URIs of the created Code individuals
     """
+
     uris = []
-    for row in data:
-        code_uri = map_code(g, row, dataset_uri)
+    
+    columns = data.columns
+    for row in data.iter_rows():
+        row_dict = dict(zip(columns, row))
+        code_uri = map_code(g, row_dict, dataset_uri)
         uris.append(code_uri)
+
     return uris

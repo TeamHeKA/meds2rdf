@@ -1,6 +1,10 @@
 # tests/test_shacl_validation.py
+from pathlib import Path
 from rdflib import Graph
 from meds2rdf.converter import MedsRDFConverter
+import json
+from unittest.mock import MagicMock, mock_open, patch
+import polars as pl
 
 # You can reuse your mocks from previous tests:
 mock_dataset_metadata = {
@@ -150,26 +154,38 @@ mock_labels = [
 # Path to the remote SHACL shapes you want to validate against:
 SHACL_SHAPES_URL = "https://raw.githubusercontent.com/TeamHeKA/meds-ontology/refs/tags/v1.0.2/shacl/meds-shapes.ttl"
 
+def fake_task_dir(name: str):
+    task = MagicMock(spec=Path)
+    task.is_dir.return_value = True
+    task.name = name
+    task.rglob.return_value = [Path("dummy/path/labels/task1/train/file.parquet")]
+
+    return task
+
+def _fake_task_dir(name):
+    p = MagicMock(spec=Path)
+    p.is_dir.return_value = True
+    p.name = name
+    p.iterdir.return_value = []  # no splits inside for now
+    p.rglob.return_value = []    # no parquet files
+    return p
 
 def test_convert_and_validate_shacl(monkeypatch):
     """
     Tests that the output RDF graph from MedsRDFConverter conforms to the MEDS SHACL shapes.
     """
-
-    # -- 1. Mock out filesystem + read_parquet just like in your previous test
-    import json
-    from unittest.mock import MagicMock, mock_open, patch
-
     with patch("builtins.open", mock_open(read_data=json.dumps(mock_dataset_metadata))), \
-         patch("pathlib.Path.exists", return_value=True), \
-         patch("polars.read_parquet") as mock_pl_read:
+        patch("pathlib.Path.exists", return_value=True), \
+        patch("pathlib.Path.iterdir") as mock_iterdir, \
+        patch("polars.scan_parquet") as mock_scan:
 
-        # Make Polars return our mock objects
-        mock_pl_read.side_effect = [
-            MagicMock(to_dicts=lambda: mock_data),    # data/**/*.parquet
-            MagicMock(to_dicts=lambda: mock_codes),   # codes
-            MagicMock(to_dicts=lambda: mock_splits),  # splits
-            MagicMock(to_dicts=lambda: mock_labels),  # labels
+        mock_iterdir.return_value = [_fake_task_dir("task1")]
+
+        mock_scan.side_effect = [
+            pl.DataFrame(mock_data).lazy(),    # data
+            pl.DataFrame(mock_codes).lazy(),   # codes
+            pl.DataFrame(mock_splits).lazy(),  # splits
+            pl.DataFrame(mock_labels).lazy(),  # labels
         ]
 
         converter = MedsRDFConverter("dummy/path")
