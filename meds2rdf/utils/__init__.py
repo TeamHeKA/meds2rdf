@@ -8,5 +8,8 @@ __all__ = [
     "add_code",
     "to_subject_node",
     "run_shacl_validation",
-    "node_exist"
+    "node_exist",
+    "generate_code",
+    "if_exist",
+    "update_graph_lazy"
 ]

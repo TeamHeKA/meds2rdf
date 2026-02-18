@@ -1,15 +1,17 @@
 from rdflib import Graph, URIRef
 from rdflib.namespace import XSD
 from typing import Optional, Iterable
+
+from meds2rdf.utils.load_utils import BATCH_SIZE
 from ..namespace import MEDS
 from ..utils.rdf_utils import *
 import polars as pl
 
 def map_code(
-    g: Graph,
-    row: dict,
-    dataset_uri: Optional[URIRef] = None
-) -> URIRef:
+    row: tuple,
+    col_idx: dict[str, int],
+    dataset_uri: URIRef | None = None
+) -> tuple[URIRef, list[tuple]]:
     """
     Map a single row of a MEDS CodeSchema into a Code RDF individual.
 
@@ -27,26 +29,32 @@ def map_code(
     URIRef
         URI of the created Code individual
     """
+    triples = []
 
-    code_str = try_access_mandatory_field_value(row=row, field="code", entity="Code")
-    code_uri = add_code(code_str=code_str, graph=g, dataset_uri=dataset_uri)
+    code_str = row[col_idx["code"]]
+    code_uri, _triples = generate_code(code_str=code_str, dataset_uri=dataset_uri)
+    triples.extend(_triples)
 
-    if_column_is_present("description", row, lambda v: g.add((code_uri, MEDS.codeDescription, to_literal(v, XSD.string))))
+    if_exist(
+        value=row[col_idx["description"]], 
+        run=lambda x: triples.append((code_uri, MEDS.codeDescription, to_literal(x, XSD.string)))
+    )
 
     def process_parent_code(v: str):
-        if v == None or v == "": 
-            return g
-        return g.add((code_uri, MEDS.parentCode, add_code(code_str=v, graph=g, external=True)))
+        if v != None and v != "": 
+            ext_code_uri, _triples = generate_code(code_str=v, external=True)
+            triples.extend(_triples)
+            return triples.append((code_uri, MEDS.parentCode, ext_code_uri))
         
-    if_column_is_present("parent_codes", row, process_parent_code)
+    if_exist(row[col_idx["parent_codes"]], process_parent_code)
 
-    return code_uri
+    return (code_uri, triples)
 
 
 def map_code_table(
     g: Graph,
     data: pl.DataFrame,
-    dataset_uri: Optional[URIRef] = None
+    dataset_uri: URIRef | None = None
 ) -> list[URIRef]:
     """
     Map an iterable of MEDS CodeSchema rows to RDF Code individuals.
@@ -66,12 +74,4 @@ def map_code_table(
         List of URIs of the created Code individuals
     """
 
-    uris = []
-    
-    columns = data.columns
-    for row in data.iter_rows():
-        row_dict = dict(zip(columns, row))
-        code_uri = map_code(g, row_dict, dataset_uri)
-        uris.append(code_uri)
-
-    return uris
+    return update_graph_lazy(data, g, lambda r, ci, _: map_code(r, ci, dataset_uri))

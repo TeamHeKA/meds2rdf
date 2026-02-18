@@ -1,11 +1,14 @@
 from pathlib import Path
-from typing import Callable, Iterable, Mapping
+from typing import Any, Callable, Iterable, Mapping
 from rdflib import Literal, RDF, URIRef, Graph, PROV
 from rdflib.namespace import XSD
 from datetime import datetime
 from typing import Optional, Callable, Iterable
 import re
+
+from meds2rdf.utils.load_utils import BATCH_SIZE
 from ..namespace import MEDS, MEDS_INSTANCES, PREFIX_MAP_BIOPORTAL
+import polars as pl
 
 from pyshacl import validate
 
@@ -34,7 +37,7 @@ def try_access_mandatory_field_value(row, field, entity):
         raise ValueError(f"{entity} must have field '{field}'")
     return val
 
-def if_column_is_present(column_name, source, callback: Callable[[str], Graph]):
+def if_column_is_present(column_name, source, callback: Callable[[str], Any]):
     value = source.get(column_name)
     if value is None:
         return
@@ -43,6 +46,16 @@ def if_column_is_present(column_name, source, callback: Callable[[str], Graph]):
             callback(v)
     else:
         callback(str(value))
+
+
+def if_exist(value: Any, run: Callable[[str], Any]):
+    if value is None:
+        return
+    if isinstance(value, Iterable) and not isinstance(value, (str, bytes)):
+        for v in value:
+            run(v)
+    else:
+        run(str(value))
 
 NT_IRI_REGEX = re.compile(
     r"^[a-zA-Z][a-zA-Z0-9+.-]*:[^\s<>\"{}|^`\\]+$"
@@ -53,19 +66,33 @@ SAFE_CHARS = re.compile(r"[^A-Za-z0-9._-]")
 def is_valid_nt_iri(iri: str) -> bool:
     return bool(NT_IRI_REGEX.match(iri))
 
-def add_code(code_str: str, graph: Graph, dataset_uri: Optional[URIRef] = None, external = False):
+def add_code(code_str: str, graph: Graph, dataset_uri: Optional[URIRef] = None, external = False) -> URIRef:
     if external: 
         code_uri = curie_to_uri(code_str)
     else:
         code_uri = URIRef(MEDS_INSTANCES[f"code/{SAFE_CHARS.sub("_", code_str.replace("//", "_"))}"])
 
-    if node_exist(graph, node=code_uri) is False:
-        graph.add((code_uri, RDF.type, MEDS.Code))
-        graph.add((code_uri, MEDS.codeString, Literal(str(code_str), datatype=XSD.string)))
-        if dataset_uri:
-            graph.add((code_uri, PROV.wasDerivedFrom, dataset_uri))
+    graph.add((code_uri, RDF.type, MEDS.Code))
+    graph.add((code_uri, MEDS.codeString, Literal(str(code_str), datatype=XSD.string)))
+    if dataset_uri:
+        graph.add((code_uri, PROV.wasDerivedFrom, dataset_uri))
         
     return code_uri
+
+
+def generate_code(code_str: str, dataset_uri: Optional[URIRef] = None, external = False) -> tuple[URIRef, list]:
+    triples = []
+    if external: 
+        code_uri = curie_to_uri(code_str)
+    else:
+        code_uri = URIRef(MEDS_INSTANCES[f"code/{SAFE_CHARS.sub("_", code_str.replace("//", "_"))}"])
+
+    triples.append((code_uri, RDF.type, MEDS.Code))
+    triples.append((code_uri, MEDS.codeString, Literal(str(code_str), datatype=XSD.string)))
+    if dataset_uri:
+        triples.append((code_uri, PROV.wasDerivedFrom, dataset_uri))
+        
+    return (code_uri, triples)
 
 def node_exist(graph: Graph, node: URIRef) -> bool:
     return (node, None, None) in graph
@@ -97,3 +124,27 @@ def curie_to_uri(
         return URIRef(curie)
     
     return URIRef(MEDS_INSTANCES[f"code/{SAFE_CHARS.sub("_", curie)}"])
+
+
+def update_graph_lazy(
+        data, g: Graph, 
+        run: Callable[[Any, dict[str, int], int], tuple[URIRef, list[tuple]]], 
+) -> list[URIRef]:
+    uris = []
+    triples = []
+    columns = data.columns
+    col_idx = {name: i for i, name in enumerate(columns)}
+
+    for row_index, row in enumerate(data.iter_rows()):
+        c_uri, _triples = run(row, col_idx, row_index)
+        triples.extend(_triples)
+        uris.append(c_uri)  # first triple subject is the event URI
+
+        if len(triples) >= BATCH_SIZE:
+            g.addN((s, p, o, g) for s, p, o in triples)
+            triples.clear()
+
+    if triples:
+        g.addN((s, p, o, g) for s, p, o in triples)
+
+    return uris
