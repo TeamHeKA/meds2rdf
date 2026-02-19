@@ -3,10 +3,7 @@
 <p align="center">
   <img src="https://img.shields.io/github/v/release/TeamHeKA/meds2rdf" alt="Latest Release"/>
   <img src="https://github.com/TeamHeKA/meds2rdf/actions/workflows/tests.yml/badge.svg" alt="Tests"/>
-  <img
-    src="https://img.shields.io/badge/python-3.12-blue"
-    alt="Python 3.12"
-  />
+  <img src="https://img.shields.io/badge/python-3.12-blue" alt="Python 3.12"/>
   <img src="https://img.shields.io/github/license/TeamHeKA/meds2rdf" alt="License"/>
   <a href="https://doi.org/10.5281/zenodo.17953581"><img src="https://zenodo.org/badge/DOI/10.5281/zenodo.17953581.svg" alt="DOI"></a>
 </p>
@@ -14,6 +11,8 @@
 **Convert MEDS datasets into RDF using the MEDS Ontology**
 
 [MEDS](https://medical-event-data-standard.github.io/) (Medical Event Data Standard) is a standard schema for representing longitudinal medical event data. This library, `meds2rdf`, converts MEDS-compliant datasets into RDF triples using the [MEDS Ontology](https://teamheka.github.io/meds-ontology).
+
+---
 
 ## Features
 
@@ -25,59 +24,94 @@
   - Labels to prediction samples
   - Subjects to splits
   - Events and Codes to dataset metadata
-- Outputs RDF in Turtle format (`.ttl`) ready for use with standard RDF tools.
+- Outputs RDF in Turtle, XML, or N-Triples format.
+- Optional persistent store via SQLite (requires `rdflib-sqlalchemy`).
+
+---
 
 ## Installation
-From the repo root:
+
+Clone and install the package in editable mode:
+
 ```bash
 git clone https://github.com/TeamHeKA/meds2rdf.git
 cd meds2rdf
 pip install -e .
-```
-You can install it directly from GitHub:
+````
+
+Or install directly from GitHub:
+
 ```bash
 pip install git+https://github.com/TeamHeKA/meds2rdf.git
 ```
 
-## How to Use
+If you want **persistent SQLite-backed RDF storage**, also install:
+
+```bash
+pip install rdflib-sqlalchemy
+```
+
+---
+
+## Usage
+
+### In-Memory Graph (default)
 
 ```python
 from meds2rdf import MedsRDFConverter
 
-# Initialize the converter with the path to your MEDS dataset directory
-converter = MedsRDFConverter("/path/to/your/meds_dataset")
+# Initialize the converter (in-memory)
+converter = MedsRDFConverter("/path/to/meds_dataset")
 
-# Convert the dataset into an RDF graph
-graph = converter.convert(
+# Convert the dataset
+converter.convert(
     include_dataset_metadata=True,
     include_codes=True,
     include_labels=True,
-    include_splits=True,
-    generate_code_nodes=False,
-    shacl_path=None
+    include_splits=True
 )
 
-# Serialize the graph to different formats
-graph.serialize(destination="output_dataset.ttl", format="turtle")
-graph.serialize(destination="output_dataset.xml", format="xml")
-graph.serialize(destination="output_dataset.nt", format="nt")
+# Serialize to different formats
+converter.to_turtle("output_dataset.ttl")
+converter.to_xml("output_dataset.xml")
+converter.to_nt("output_dataset.nt")
 
-print("Conversion complete! RDF files saved.")
+# Close resources
+converter.close()
 ```
 
-### Notes
+---
 
-* Make sure your MEDS dataset directory contains the expected structure:
+### Persistent SQLite Store
+
+```python
+from meds2rdf import MedsRDFConverter
+
+# Requires `rdflib-sqlalchemy` installed
+converter = MedsRDFConverter(
+    "/path/to/meds_dataset",
+    persistent_store=True,
+)
+
+# Context manager ensures automatic cleanup
+with converter:
+    graph = converter.convert(include_labels=True)
+    converter.to_turtle("output_dataset.ttl")
+```
+
+## Notes
+
+* The MEDS dataset directory must follow the standard structure:
 
   * `metadata/dataset.json`
   * `metadata/codes.parquet` (optional)
   * `metadata/subject_splits.parquet` (optional)
   * `data/` folder with Parquet files
   * `labels/` folder with label Parquet files
-* The `convert` method returns an `rdflib.Graph` object that you can further manipulate or serialize.
 
+* The `convert` method returns an `rdflib.Graph` object that can be further manipulated or serialized.
 
-Here’s a clean **“How to run tests”** section you can drop straight into your README. It matches your project structure and the earlier import issue you hit.
+* For persistent stores, the `store_path` points to **one SQLite database file** that contains the full graph. You do not need multiple files unless you want separate graphs.
 
 ---
 
@@ -87,8 +121,6 @@ This project uses **pytest**.
 
 ### Install development dependencies
 
-From the repository root:
-
 ```bash
 python -m venv .venv
 source .venv/bin/activate   # Linux/macOS
@@ -97,7 +129,7 @@ source .venv/bin/activate   # Linux/macOS
 pip install -e .[dev]
 ```
 
-If you don’t have optional dev dependencies set up, install pytest manually:
+Or install pytest manually:
 
 ```bash
 pip install pytest
@@ -107,23 +139,23 @@ pip install pytest
 
 ### Run the full test suite
 
-From the repository root:
-
 ```bash
 pytest
 ```
 
+---
 
 ## Cite this Repository
 
 If you use `meds2rdf` in your research, please cite it as follows:
 
 ### BibTeX
+
 ```bibtex
 @software{meds2rdf,
   title        = {meds2rdf: Converting MEDS Datasets to RDF Using the MEDS Ontology},
   author       = {{Alberto Marfoglia and Contributors}},
   year         = {2025},
-  url          = {https://github.com/TeamHeKA/meds2rdf},
-  note         = {Python library for converting MEDS-compliant datasets into RDF}
+  url          = {https://doi.org/10.5281/zenodo.17953580},  note         = {Python library for converting MEDS-compliant datasets into RDF}
 }
+```

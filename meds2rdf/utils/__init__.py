@@ -1,5 +1,6 @@
 # Optional: expose utility functions
 from .rdf_utils import *
+from .load_utils import *
 
 __all__ = [
     "to_literal",
@@ -11,5 +12,8 @@ __all__ = [
     "node_exist",
     "generate_code",
     "if_exist",
-    "update_graph_lazy"
+    "update_graph_lazy",
+    "raise_if_not_exist",
+    "on_parquet",
+    "load_json"
 ]
