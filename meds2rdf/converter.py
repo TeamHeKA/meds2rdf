@@ -1,22 +1,22 @@
 # meds2rdf/converter.py
 from __future__ import annotations
 from pathlib import Path
-from typing import Optional, Callable
+from typing import Optional
 import logging
 
 from rdflib import Graph, plugin
 from rdflib.store import Store
 from rdflib.plugin import PluginException
 
-from .mapping.event_mapper import map_data_table
-from .mapping.code_mapper import map_code_table
-from .mapping.label_mapper import map_label_table
-from .mapping.split_mapper import map_split_table
+from .mapping.event_mapper import map_event
+from .mapping.code_mapper import map_code
+from .mapping.label_mapper import map_label
+from .mapping.split_mapper import map_split
 from .mapping.metadata_mapper import map_dataset_metadata
 
 from .namespace import MEDS, MEDS_INSTANCES
 from .utils.rdf_utils import run_shacl_validation
-from .utils.load_utils import load_json, on_parquet, raise_if_not_exist
+from .utils.load_utils import load_and_parse_meds_table, load_json, load_task_labels_files, raise_if_not_exist
 
 logger = logging.getLogger(__name__)
 
@@ -158,36 +158,47 @@ class MedsRDFConverter:
             dataset_uri = map_dataset_metadata(self.graph, load_json(meta_path))
 
         # 2. Data tables
-        data_files = list((self.meds_root / "data").rglob("*.parquet"))
-        on_parquet(files_path=data_files, run=lambda x: map_data_table(self.graph, x, dataset_uri))
+        load_and_parse_meds_table(
+             files_path=list((self.meds_root / "data").rglob("*.parquet")),
+             entity="Event",
+             map=map_event,
+             storage=self.graph,
+             provenance=dataset_uri
+        )
 
         # 3. Codes
         if include_codes:
-            code_file = self.meds_root / "metadata" / "codes.parquet"
-            raise_if_not_exist(code_file)
-            on_parquet(files_path=[code_file], run=lambda x: map_code_table(self.graph, x, dataset_uri))
+            load_and_parse_meds_table(
+                files_path=[self.meds_root / "metadata" / "codes.parquet"],
+                entity="Code",
+                map=map_code,
+                storage=self.graph,
+                provenance=dataset_uri
+            )
 
         # 4. Subject splits
         if include_splits:
-            split_file = self.meds_root / "metadata" / "subject_splits.parquet"
-            raise_if_not_exist(split_file)
-            on_parquet(files_path=[split_file], run=lambda x: map_split_table(self.graph, x))
+            load_and_parse_meds_table(
+                files_path=[self.meds_root / "metadata" / "subject_splits.parquet"],
+                entity="SubjectSplit",
+                map=map_split,
+                storage=self.graph
+            )
 
         # 5. Labels
         if include_labels:
-            labels_root: Path = (self.meds_root / "labels")
-            raise_if_not_exist(labels_root)
-
-            for task_dir in labels_root.iterdir():
-                if not task_dir.is_dir():
-                    continue
-                parquet_files = list(task_dir.rglob("*.parquet"))
-                if not parquet_files:
-                    continue
-                on_parquet(files_path=parquet_files, run=lambda x: map_label_table(self.graph, x))
+            load_and_parse_meds_table(
+                files_path=load_task_labels_files(self.meds_root / "labels"),
+                entity="Label",
+                map=map_label,
+                storage=self.graph
+            )
 
         # SHACL validation if requested
         if shacl_path is not None:
+            print("holaaaaaaaaaaaa")
+            for (s,p,o) in self.graph.triples((None, None, None)):
+                print(s, p, o)
             run_shacl_validation(self.graph, shacl_path)
 
         return self.graph

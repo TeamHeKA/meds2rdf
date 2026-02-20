@@ -46,7 +46,7 @@ mock_data = [
 
     # Subject 1 — lab event with unit modifier
     {
-        "subject_id": 11111111,
+        "subject_id": 22222222,
         "time": "2025-01-01T05:30:00",
         "code": "LAB//GLUCOSE",
         "numeric_value": 120.5,
@@ -55,7 +55,7 @@ mock_data = [
 
     # Subject 1 — event with image value modality
     {
-        "subject_id": 11111111,
+        "subject_id": 33333333,
         "time": "2025-01-02T12:30:05",
         "code": "RADIOLOGY//CHEST_XRAY",
         "numeric_value": None,
@@ -65,7 +65,7 @@ mock_data = [
 
     # Subject 2 — minimal data
     {
-        "subject_id": 22222222,
+        "subject_id": 44444444,
         "time": "2025-01-03T00:00:00",
         "code": "DEMOGRAPHICS//AGE",
         "numeric_value": 60,
@@ -174,7 +174,7 @@ def test_convert_and_validate_shacl(monkeypatch):
     """
     Tests that the output RDF graph from MedsRDFConverter conforms to the MEDS SHACL shapes.
     """
-    with patch("builtins.open", mock_open(read_data=json.dumps(mock_dataset_metadata))), \
+    with patch("meds2rdf.converter.load_json", return_value=mock_dataset_metadata), \
         patch("pathlib.Path.exists", return_value=True), \
         patch("pathlib.Path.iterdir") as mock_iterdir, \
         patch("polars.scan_parquet") as mock_scan:

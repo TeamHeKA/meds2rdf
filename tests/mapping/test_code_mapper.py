@@ -1,10 +1,13 @@
+from pathlib import Path
+
+from meds2rdf.mapping.code_mapper import map_code
+from meds2rdf.utils.load_utils import load_and_parse_meds_table
 from rdflib import Graph, URIRef, Literal, XSD
-from meds2rdf.mapping.code_mapper import map_code_table
 from meds2rdf.namespace import MEDS, MEDS_INSTANCES
 from meds2rdf.utils.rdf_utils import curie_to_uri
 import polars as pl
 
-def test_map_code_table_adds_code_triples():
+def test_map_code_table_adds_code_triples(tmp_path):
     graph = Graph()
     
     codes = pl.DataFrame([
@@ -13,8 +16,19 @@ def test_map_code_table_adds_code_triples():
         {"code": "CODE3", "description": "Test code", "parent_codes": ["LOINC/1234", None, ""]},
     ])
 
-    map_code_table(graph, codes, dataset_uri=None)
+    path = Path(tmp_path / "codes.parquet")
+    codes.write_parquet(path)
 
+    # Pass list[Path] as expected
+    load_and_parse_meds_table(
+        files_path=[path],
+        entity="Code",
+        map=map_code,
+        storage=graph,
+        provenance=None
+    )
+
+    # --- Assertions ---
     code1_uri = URIRef(MEDS_INSTANCES["code/CODE1_A"])
     code2_uri = URIRef(MEDS_INSTANCES["code/CODE2"])
     codec_uri = URIRef(MEDS_INSTANCES["code/CODE3"])

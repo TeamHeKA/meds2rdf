@@ -1,10 +1,13 @@
+from pathlib import Path
+
 from pytest import raises
 from rdflib import Graph, URIRef
-from meds2rdf.mapping.split_mapper import map_split_table
+from meds2rdf.mapping.split_mapper import map_split
+from meds2rdf.utils.load_utils import load_and_parse_meds_table
 from meds2rdf.namespace import MEDS, MEDS_INSTANCES
 import polars as pl
 
-def test_map_split_table_adds_subjectsplit_triples():
+def test_map_split_table_adds_subjectsplit_triples(tmp_path):
     graph = Graph()
     
     splits = pl.DataFrame([
@@ -13,7 +16,16 @@ def test_map_split_table_adds_subjectsplit_triples():
         {"subject_id": 3, "split": "tuning"}
     ])
     
-    map_split_table(graph, splits)
+    path = Path(tmp_path / "split.parquet")
+    splits.write_parquet(path)
+
+    load_and_parse_meds_table(
+        files_path=[path],
+        entity="Split",
+        map=map_split,
+        storage=graph,
+        provenance=None
+    )
 
     subj_uris = [
         URIRef(MEDS_INSTANCES["subject/1"]), 
@@ -29,7 +41,16 @@ def test_map_split_table_adds_subjectsplit_triples():
 
     split_name = "invalid_split_name"
     with raises(ValueError) as excinfo:
-        map_split_table(graph, data = pl.DataFrame([{"subject_id": 1, "split": split_name}]))
+        invalid_split = pl.DataFrame([{"subject_id": 1, "split": split_name}])
+        path = Path(tmp_path / "invalid_split.parquet")
+        invalid_split.write_parquet(path)
+        load_and_parse_meds_table(
+            files_path=[path],
+            entity="Split",
+            map=map_split,
+            storage=graph,
+            provenance=None
+        )
 
     assert f"The given split name '{split_name}' is not valid" in str(excinfo.value)
 

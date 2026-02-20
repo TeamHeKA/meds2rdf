@@ -1,17 +1,16 @@
-from rdflib import Graph, URIRef
+from rdflib import URIRef
 from rdflib.namespace import XSD
-from typing import Optional, Iterable
 
-from meds2rdf.utils.load_utils import BATCH_SIZE
 from ..namespace import MEDS
-from ..utils.rdf_utils import *
-import polars as pl
+from ..utils.rdf_utils import if_exist, to_literal, generate_code
+
 
 def map_code(
     row: tuple,
     col_idx: dict[str, int],
+    row_index: int,
     dataset_uri: URIRef | None = None
-) -> tuple[URIRef, list[tuple]]:
+) -> list[tuple[URIRef, URIRef, URIRef]]:
     """
     Map a single row of a MEDS CodeSchema into a Code RDF individual.
 
@@ -48,30 +47,4 @@ def map_code(
         
     if_exist(row[col_idx["parent_codes"]], process_parent_code)
 
-    return (code_uri, triples)
-
-
-def map_code_table(
-    g: Graph,
-    data: pl.DataFrame,
-    dataset_uri: URIRef | None = None
-) -> list[URIRef]:
-    """
-    Map an iterable of MEDS CodeSchema rows to RDF Code individuals.
-
-    Parameters
-    ----------
-    g : Graph
-        RDF graph to populate
-    data : Iterable[dict]
-        A polars lazy DataFrame representing the MEDS CodeSchema
-    dataset_uri : Optional[URIRef]
-        URI of the dataset metadata to link all codes to
-
-    Returns
-    -------
-    list[URIRef]
-        List of URIs of the created Code individuals
-    """
-
-    return update_graph_lazy(data, g, lambda r, ci, _: map_code(r, ci, dataset_uri))
+    return triples

@@ -14,6 +14,7 @@ __all__ = [
     "if_exist",
     "update_graph_lazy",
     "raise_if_not_exist",
-    "on_parquet",
-    "load_json"
+    "load_json",
+    "load_and_parse_meds_table",
+    "load_task_labels_files"
 ]
