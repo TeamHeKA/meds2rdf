@@ -1,5 +1,5 @@
 from rdflib import URIRef, Literal
-from rdflib.namespace import RDF, XSD, PROV,
+from rdflib.namespace import RDF, XSD, PROV
 import polars as pl
 
 from ..namespace import MEDS, MEDS_INSTANCES
