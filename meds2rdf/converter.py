@@ -8,7 +8,7 @@ from rdflib import Graph, plugin
 from rdflib.store import Store
 from rdflib.plugin import PluginException
 
-from .mapping.event_mapper import map_event
+from .mapping.event_mapper import map_event, map_event_df
 from .mapping.code_mapper import map_code
 from .mapping.label_mapper import map_label
 from .mapping.split_mapper import map_split
@@ -16,7 +16,7 @@ from .mapping.metadata_mapper import map_dataset_metadata
 
 from .namespace import MEDS, MEDS_INSTANCES
 from .utils.rdf_utils import run_shacl_validation
-from .utils.load_utils import load_and_parse_meds_table, load_json, load_task_labels_files, raise_if_not_exist
+from .utils.load_utils import load_and_parse_meds_table, load_and_parse_meds_table2, load_json, load_task_labels_files, raise_if_not_exist
 
 logger = logging.getLogger(__name__)
 
@@ -158,10 +158,10 @@ class MedsRDFConverter:
             dataset_uri = map_dataset_metadata(self.graph, load_json(meta_path))
 
         # 2. Data tables
-        load_and_parse_meds_table(
+        load_and_parse_meds_table2(
              files_path=list((self.meds_root / "data").rglob("*.parquet")),
              entity="Event",
-             map=map_event,
+             map_df=map_event_df,
              storage=self.graph,
              provenance=dataset_uri
         )
@@ -196,9 +196,6 @@ class MedsRDFConverter:
 
         # SHACL validation if requested
         if shacl_path is not None:
-            print("holaaaaaaaaaaaa")
-            for (s,p,o) in self.graph.triples((None, None, None)):
-                print(s, p, o)
             run_shacl_validation(self.graph, shacl_path)
 
         return self.graph

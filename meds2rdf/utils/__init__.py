@@ -16,5 +16,6 @@ __all__ = [
     "raise_if_not_exist",
     "load_json",
     "load_and_parse_meds_table",
-    "load_task_labels_files"
+    "load_task_labels_files",
+    "load_and_parse_meds_table2"
 ]
