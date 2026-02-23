@@ -46,7 +46,7 @@ class MedsRDFConverter:
         self.graph.bind("meds-data", MEDS_INSTANCES)
 
     def erase(self):
-        self.graph = None
+        del self.graph
 
     # Context manager support
     def __enter__(self) -> "MedsRDFConverter":
@@ -79,8 +79,6 @@ class MedsRDFConverter:
         -------
         rdflib.Graph
         """
-        self.load_in_memory()
-
         dataset_uri = None
 
         # 1. Dataset metadata
