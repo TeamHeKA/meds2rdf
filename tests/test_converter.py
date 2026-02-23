@@ -3,8 +3,10 @@ from pathlib import Path
 from rdflib import Graph
 from meds2rdf.converter import MedsRDFConverter
 import json
-from unittest.mock import MagicMock, mock_open, patch
+from unittest.mock import MagicMock, patch
 import polars as pl
+
+from meds2rdf.utils.rdf_utils import run_shacl_validation
 
 # You can reuse your mocks from previous tests:
 mock_dataset_metadata = {
@@ -201,8 +203,11 @@ def test_convert_and_validate_shacl(monkeypatch, tmp_path):
                 include_codes=True,
                 include_labels=True,
                 include_splits=True,
-                shacl_path=SHACL_SHAPES_URL
             )
+            
+        
+        if data_graph is not None:
+            run_shacl_validation(data_graph, SHACL_SHAPES_URL)
         
 
     # Sanity check — we *have* an rdflib.Graph

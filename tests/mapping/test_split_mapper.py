@@ -3,7 +3,7 @@ from pathlib import Path
 from pytest import raises
 from rdflib import Graph, URIRef
 from meds2rdf.mapping.split_mapper import map_split_df
-from meds2rdf.utils.load_utils import load_and_parse_meds_table2
+from meds2rdf.utils.load_utils import load_and_parse_meds_table
 from meds2rdf.namespace import MEDS, MEDS_INSTANCES
 import polars as pl
 
@@ -19,7 +19,7 @@ def test_map_split_table_adds_subjectsplit_triples(tmp_path):
     path = Path(tmp_path / "split.parquet")
     splits.write_parquet(path)
 
-    load_and_parse_meds_table2(
+    load_and_parse_meds_table(
         files_path=[path],
         entity="Split",
         map=map_split_df,
@@ -44,7 +44,7 @@ def test_map_split_table_adds_subjectsplit_triples(tmp_path):
         invalid_split = pl.DataFrame([{"subject_id": 1, "split": split_name}])
         path = Path(tmp_path / "invalid_split.parquet")
         invalid_split.write_parquet(path)
-        load_and_parse_meds_table2(
+        load_and_parse_meds_table(
             files_path=[path],
             entity="Split",
             map=map_split_df,

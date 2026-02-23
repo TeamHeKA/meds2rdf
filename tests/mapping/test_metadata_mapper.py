@@ -29,8 +29,6 @@ def test_map_dataset_metadata_adds_triples(tmp_path):
         "other_extension_columns": ["extra_column"]
     }
 
-    #dataset_uri = map_dataset_metadata(graph, metadata)
-
     dataset_uri = URIRef(MEDS_INSTANCES[f"dataset_metadata/1"])
 
     path = Path(tmp_path / "metadata.json")

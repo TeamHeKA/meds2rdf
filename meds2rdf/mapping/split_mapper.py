@@ -1,10 +1,9 @@
 from typing import Generator
 
-from rdflib import RDF, Literal, URIRef, XSD, PROV
+from rdflib import RDF, Literal, URIRef, PROV
 import polars as pl
 
 from ..namespace import MEDS, MEDS_INSTANCES
-from ..utils.rdf_utils import to_subject_node
 
 # Map split names to RDF predicates
 _split_dict = {
@@ -12,31 +11,6 @@ _split_dict = {
     "tuning": MEDS.tuningSplit,
     "held_out": MEDS.heldOutSplit
 }
-
-def map_split(
-    row: tuple,
-    col_idx: dict[str, int],
-    row_index: int,
-    dataset_uri: URIRef | None = None
-) -> list[tuple[URIRef, URIRef, URIRef]]:
-    """
-    Map a single Polars row (tuple) to a SubjectSplit RDF individual.
-    Returns the URI of the created split.
-    """
-    triples = []
-    subject_id = row[col_idx["subject_id"]]
-    assigned_split = row[col_idx["split"]]
-
-    if (split_uri := _split_dict.get(assigned_split)) is None:
-        raise ValueError(f"The given split name '{assigned_split}' is not valid")
-    
-    triples.append((to_subject_node(subject_id), MEDS.assignedSplit, split_uri))
-
-    triples.append((split_uri, RDF.type, MEDS.SubjectSplit))
-    triples.append((split_uri, MEDS.splitName, Literal(assigned_split)))
-
-    return triples
-
 
 def map_split_df(
     df: pl.DataFrame,

@@ -1,7 +1,7 @@
 from pathlib import Path
 
 from meds2rdf.mapping.code_mapper import map_code_df
-from meds2rdf.utils.load_utils import load_and_parse_meds_table2
+from meds2rdf.utils.load_utils import load_and_parse_meds_table
 from rdflib import Graph, URIRef, Literal, XSD
 from meds2rdf.namespace import MEDS, MEDS_INSTANCES
 from meds2rdf.utils.rdf_utils import curie_to_uri
@@ -20,7 +20,7 @@ def test_map_code_table_adds_code_triples(tmp_path):
     codes.write_parquet(path)
 
     # Pass list[Path] as expected
-    load_and_parse_meds_table2(
+    load_and_parse_meds_table(
         files_path=[path],
         entity="Code",
         map=map_code_df,

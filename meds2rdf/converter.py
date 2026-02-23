@@ -6,15 +6,15 @@ import logging
 
 from rdflib import Graph, URIRef
 
-from .mapping.event_mapper import map_event, map_event_df
-from .mapping.code_mapper import map_code, map_code_df
-from .mapping.label_mapper import map_label, map_label_df
-from .mapping.split_mapper import map_split, map_split_df
-from .mapping.metadata_mapper import map_dataset_metadata, map_dataset_metadata_df
+from .mapping.event_mapper import map_event_df
+from .mapping.code_mapper import map_code_df
+from .mapping.label_mapper import map_label_df
+from .mapping.split_mapper import map_split_df
+from .mapping.metadata_mapper import map_dataset_metadata_df
 
 from .namespace import MEDS, MEDS_INSTANCES
 from .utils.rdf_utils import run_shacl_validation
-from .utils.load_utils import load_and_parse_meds_table, load_and_parse_meds_table2, load_json, load_task_labels_files, load_and_parse_dataset_table
+from .utils.load_utils import load_and_parse_meds_table, load_task_labels_files, load_and_parse_dataset_table
 
 logger = logging.getLogger(__name__)
 
@@ -63,11 +63,10 @@ class MedsRDFConverter:
     # ------------------------------
     def convert(
         self,
-        include_dataset_metadata: bool = True,
-        include_codes: bool = True,
+        include_dataset_metadata: bool = False,
+        include_codes: bool = False,
         include_labels: bool = False,
         include_splits: bool = False,
-        shacl_path: Optional[str | Path] = None,
     ) -> Graph | None:
         """
         Convert an entire MEDS dataset directory to RDF and return the rdflib.Graph.
@@ -95,12 +94,8 @@ class MedsRDFConverter:
                 dataset_uri=dataset_uri
             )
 
-            # meta_path = self.meds_root / "metadata" / "dataset.json"
-            # raise_if_not_exist(meta_path)
-            # dataset_uri = map_dataset_metadata(self.graph, load_json(meta_path))
-
         # 2. Data tables
-        load_and_parse_meds_table2(
+        load_and_parse_meds_table(
              files_path=list((self.meds_root / "data").rglob("*.parquet")),
              entity="Event",
              map=map_event_df,
@@ -110,7 +105,7 @@ class MedsRDFConverter:
 
         # 3. Codes
         if include_codes:
-            load_and_parse_meds_table2(
+            load_and_parse_meds_table(
                 files_path=[self.meds_root / "metadata" / "codes.parquet"],
                 entity="Code",
                 map=map_code_df,
@@ -120,7 +115,7 @@ class MedsRDFConverter:
 
         # 4. Subject splits
         if include_splits:
-            load_and_parse_meds_table2(
+            load_and_parse_meds_table(
                 files_path=[self.meds_root / "metadata" / "subject_splits.parquet"],
                 entity="SubjectSplit",
                 map=map_split_df,
@@ -129,16 +124,12 @@ class MedsRDFConverter:
 
         # 5. Labels
         if include_labels:
-            load_and_parse_meds_table2(
+            load_and_parse_meds_table(
                 files_path=load_task_labels_files(self.meds_root / "labels"),
                 entity="Label",
                 map=map_label_df,
                 storage=self.graph
             )
-
-        # SHACL validation if requested
-        if shacl_path is not None and self.graph is not None:
-            run_shacl_validation(self.graph, shacl_path)
 
         return self.graph
 
