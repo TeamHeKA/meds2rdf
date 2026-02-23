@@ -80,7 +80,6 @@ def map_event_df(
 
     # ---- Row streaming iteration (no Python list materialization) ----
     for i, row in enumerate(df.iter_rows()):
-
         sid = row[col_idx["subject_id"]]
         code_str = row[col_idx["code"]]
 

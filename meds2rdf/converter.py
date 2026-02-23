@@ -4,17 +4,17 @@ from pathlib import Path
 from typing import Optional
 import logging
 
-from rdflib import Graph
+from rdflib import Graph, URIRef
 
 from .mapping.event_mapper import map_event, map_event_df
-from .mapping.code_mapper import map_code
-from .mapping.label_mapper import map_label
-from .mapping.split_mapper import map_split
-from .mapping.metadata_mapper import map_dataset_metadata
+from .mapping.code_mapper import map_code, map_code_df
+from .mapping.label_mapper import map_label, map_label_df
+from .mapping.split_mapper import map_split, map_split_df
+from .mapping.metadata_mapper import map_dataset_metadata, map_dataset_metadata_df
 
 from .namespace import MEDS, MEDS_INSTANCES
 from .utils.rdf_utils import run_shacl_validation
-from .utils.load_utils import load_and_parse_meds_table, load_and_parse_meds_table2, load_json, load_task_labels_files, raise_if_not_exist
+from .utils.load_utils import load_and_parse_meds_table, load_and_parse_meds_table2, load_json, load_task_labels_files, load_and_parse_dataset_table
 
 logger = logging.getLogger(__name__)
 
@@ -68,7 +68,7 @@ class MedsRDFConverter:
         include_labels: bool = False,
         include_splits: bool = False,
         shacl_path: Optional[str | Path] = None,
-    ) -> Graph:
+    ) -> Graph | None:
         """
         Convert an entire MEDS dataset directory to RDF and return the rdflib.Graph.
 
@@ -83,49 +83,61 @@ class MedsRDFConverter:
 
         # 1. Dataset metadata
         if include_dataset_metadata:
-            meta_path = self.meds_root / "metadata" / "dataset.json"
-            raise_if_not_exist(meta_path)
-            dataset_uri = map_dataset_metadata(self.graph, load_json(meta_path))
+            
+            import uuid
+
+            dataset_uri = URIRef(MEDS_INSTANCES[f"dataset_metadata/{uuid.uuid4()}"])
+            
+            load_and_parse_dataset_table(
+                file_path=(self.meds_root / "metadata" / "dataset.json"),
+                map=map_dataset_metadata_df,
+                storage=self.graph,
+                dataset_uri=dataset_uri
+            )
+
+            # meta_path = self.meds_root / "metadata" / "dataset.json"
+            # raise_if_not_exist(meta_path)
+            # dataset_uri = map_dataset_metadata(self.graph, load_json(meta_path))
 
         # 2. Data tables
         load_and_parse_meds_table2(
              files_path=list((self.meds_root / "data").rglob("*.parquet")),
              entity="Event",
-             map_df=map_event_df,
+             map=map_event_df,
              storage=self.graph,
              provenance=dataset_uri
         )
 
         # 3. Codes
         if include_codes:
-            load_and_parse_meds_table(
+            load_and_parse_meds_table2(
                 files_path=[self.meds_root / "metadata" / "codes.parquet"],
                 entity="Code",
-                map=map_code,
+                map=map_code_df,
                 storage=self.graph,
                 provenance=dataset_uri
             )
 
         # 4. Subject splits
         if include_splits:
-            load_and_parse_meds_table(
+            load_and_parse_meds_table2(
                 files_path=[self.meds_root / "metadata" / "subject_splits.parquet"],
                 entity="SubjectSplit",
-                map=map_split,
+                map=map_split_df,
                 storage=self.graph
             )
 
         # 5. Labels
         if include_labels:
-            load_and_parse_meds_table(
+            load_and_parse_meds_table2(
                 files_path=load_task_labels_files(self.meds_root / "labels"),
                 entity="Label",
-                map=map_label,
+                map=map_label_df,
                 storage=self.graph
             )
 
         # SHACL validation if requested
-        if shacl_path is not None:
+        if shacl_path is not None and self.graph is not None:
             run_shacl_validation(self.graph, shacl_path)
 
         return self.graph

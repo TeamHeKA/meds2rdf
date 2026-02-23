@@ -11,7 +11,7 @@ import math
 from concurrent.futures import ProcessPoolExecutor
 import gc
 
-BATCH_SIZE = 512_000
+BATCH_SIZE = 256_000
 
 def raise_if_not_exist(path: Path):
     if not path.exists():
@@ -130,7 +130,7 @@ def stream_to_nt_file(triple_generator, output_path: str):
             f.write(f"{s.n3()} {p.n3()} {o.n3()} .\n")
 
 def _run_with_polars(
-    files_path: list[Path],
+    data: pl.LazyFrame,
     run_df,
     entity: str,
     graph: Graph | None = None,
@@ -141,9 +141,6 @@ def _run_with_polars(
     map batch-wise using generator,
     and insert triples with addN().
     """
-
-    data = pl.scan_parquet(files_path)
-
     total_rows = data.select(pl.len()).collect().item()
     total_batches = math.ceil(total_rows / BATCH_SIZE)
 
@@ -173,33 +170,50 @@ def _run_with_polars(
 def load_and_parse_meds_table2(
     files_path: list[Path],
     entity: str,
-    map_df,
-    storage: Graph,
+    map,
+    storage: Graph | None,
     provenance: URIRef | None = None,
 ):
     for f in files_path:
         raise_if_not_exist(f)
 
     _run_with_polars(
-        files_path=files_path,
-        run_df=map_df,
+        data=pl.scan_parquet(files_path),
+        run_df=map,
         entity=entity,
         graph=storage,
         dataset_uri=provenance,
     )
+
+def load_and_parse_dataset_table(
+    file_path: Path,
+    map,
+    storage: Graph | None,
+    dataset_uri: URIRef,
+):
+    raise_if_not_exist(file_path)
+
+    with tqdm(total=1, desc=f"Processing Dataset Metadata") as pbar:
+        metadata_dict = load_json(file_path)
+        if storage is not None:
+            storage.addN((s, p, o, storage) for s, p, o in map(metadata_dict, dataset_uri))
+        else:
+            stream_to_nt_file(triple_generator=map(metadata_dict, dataset_uri), output_path="events.nt")
+        pbar.update(1)
+
 
 
 def load_and_parse_meds_table(
     files_path: list[Path],
     entity: str,
     map: Callable[[tuple, dict[str, int], int, URIRef], list[tuple[URIRef, URIRef, URIRef]]],
-    storage: Graph,
+    storage: Graph | None,
     provenance: URIRef | None = None,
 ):
     for f in files_path:
         raise_if_not_exist(f)
 
-    nt_triples = _run_in_parallel(files_path, map, entity, storage, provenance)
+    # nt_triples = _run_in_parallel(files_path, map, entity, storage, provenance)
 
     #for nt_file in tqdm(nt_triples, desc=f"Loading {entity} triples into graph"):
         # try:

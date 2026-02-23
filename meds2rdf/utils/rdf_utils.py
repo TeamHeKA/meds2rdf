@@ -79,19 +79,19 @@ def add_code(code_str: str, graph: Graph, dataset_uri: Optional[URIRef] = None, 
         
     return code_uri
 
+def generate_code_uri(code_str: str, external = False):
+    if external: 
+        return curie_to_uri(code_str)
+    
+    return URIRef(MEDS_INSTANCES[f"code/{SAFE_CHARS.sub("_", code_str.replace("//", "_"))}"])
 
 def generate_code(code_str: str, dataset_uri: Optional[URIRef] = None, external = False) -> tuple[URIRef, list]:
     triples = []
-    if external: 
-        code_uri = curie_to_uri(code_str)
-    else:
-        code_uri = URIRef(MEDS_INSTANCES[f"code/{SAFE_CHARS.sub("_", code_str.replace("//", "_"))}"])
-
+    code_uri = generate_code_uri(code_str, external)
     triples.append((code_uri, RDF.type, MEDS.Code))
     triples.append((code_uri, MEDS.codeString, Literal(str(code_str), datatype=XSD.string)))
     if dataset_uri:
         triples.append((code_uri, PROV.wasDerivedFrom, dataset_uri))
-        
     return (code_uri, triples)
 
 def node_exist(graph: Graph, node: URIRef) -> bool:

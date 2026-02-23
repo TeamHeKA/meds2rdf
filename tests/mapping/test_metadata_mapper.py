@@ -1,8 +1,12 @@
-from rdflib import Graph, Literal, XSD, URIRef, RDF, RDFS, DCAT, PROV, DCTERMS as DCT
-from meds2rdf.mapping.metadata_mapper import map_dataset_metadata
-from meds2rdf.namespace import MEDS
+import json
+from pathlib import Path
 
-def test_map_dataset_metadata_adds_triples():
+from rdflib import Graph, Literal, XSD, URIRef, RDF, RDFS, DCAT, PROV, DCTERMS as DCT
+from meds2rdf.mapping.metadata_mapper import map_dataset_metadata_df
+from meds2rdf.utils.load_utils import load_and_parse_dataset_table
+from meds2rdf.namespace import MEDS, MEDS_INSTANCES
+
+def test_map_dataset_metadata_adds_triples(tmp_path):
     graph = Graph()
 
     metadata = {
@@ -25,7 +29,20 @@ def test_map_dataset_metadata_adds_triples():
         "other_extension_columns": ["extra_column"]
     }
 
-    dataset_uri = map_dataset_metadata(graph, metadata)
+    #dataset_uri = map_dataset_metadata(graph, metadata)
+
+    dataset_uri = URIRef(MEDS_INSTANCES[f"dataset_metadata/1"])
+
+    path = Path(tmp_path / "metadata.json")
+    with open(path, "w", encoding="utf-8") as f:
+        json.dump(metadata, f, indent=4, ensure_ascii=False)
+
+    load_and_parse_dataset_table(
+        file_path=path,
+        map=map_dataset_metadata_df,
+        storage=graph,
+        dataset_uri=dataset_uri
+    )
 
     graph.print()
 
@@ -53,7 +70,7 @@ def test_map_dataset_metadata_adds_triples():
     assert (dist_uri, DCAT.accessURL, URIRef(metadata["description_uri"])) in graph
 
     # Check prov:Activity for ETL metadata
-    activity_triples = list(graph.triples((dataset_uri, PROV.wasGeneratedBy, None)))
+    activity_triples = list(graph.triples((None, PROV.wasGeneratedBy, None)))
     assert len(activity_triples) == 1
     activity_uri = activity_triples[0][2]
     assert (activity_uri, RDF.type, PROV.Activity) in graph

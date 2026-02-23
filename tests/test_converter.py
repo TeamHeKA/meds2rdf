@@ -170,12 +170,11 @@ def _fake_task_dir(name):
     p.rglob.return_value = []    # no parquet files
     return p
 
-def test_convert_and_validate_shacl(monkeypatch):
+def test_convert_and_validate_shacl(monkeypatch, tmp_path):
     """
     Tests that the output RDF graph from MedsRDFConverter conforms to the MEDS SHACL shapes.
     """
-    with patch("meds2rdf.converter.load_json", return_value=mock_dataset_metadata), \
-        patch("pathlib.Path.exists", return_value=True), \
+    with patch("pathlib.Path.exists", return_value=True), \
         patch("pathlib.Path.iterdir") as mock_iterdir, \
         patch("polars.scan_parquet") as mock_scan:
 
@@ -188,9 +187,13 @@ def test_convert_and_validate_shacl(monkeypatch):
             pl.DataFrame(mock_labels).lazy(),  # labels
         ]
 
-        engine = MedsRDFConverter("dummy/path")
-        # Requires `rdflib-sqlalchemy` installed
+        engine = MedsRDFConverter(tmp_path)
+        temp_dir = (tmp_path / "metadata")
+        temp_dir.mkdir()
+        with open(temp_dir / "dataset.json", "w", encoding="utf-8") as f:
+            json.dump(mock_dataset_metadata, f, indent=4, ensure_ascii=False)
 
+        data_graph = None
         # Context manager ensures automatic cleanup
         with engine:
             data_graph = engine.convert(
@@ -200,6 +203,7 @@ def test_convert_and_validate_shacl(monkeypatch):
                 include_splits=True,
                 shacl_path=SHACL_SHAPES_URL
             )
+        
 
     # Sanity check — we *have* an rdflib.Graph
     assert isinstance(data_graph, Graph)

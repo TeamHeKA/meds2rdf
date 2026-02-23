@@ -1,9 +1,9 @@
 from pathlib import Path
 
 from rdflib import XSD, Graph, URIRef, Literal
-from meds2rdf.mapping.event_mapper import map_event
+from meds2rdf.mapping.event_mapper import map_event_df
 from meds2rdf.namespace import MEDS, MEDS_INSTANCES
-from meds2rdf.utils.load_utils import load_and_parse_meds_table
+from meds2rdf.utils.load_utils import load_and_parse_meds_table2
 import polars as pl
 
 def test_map_data_table_adds_event_triples(tmp_path):
@@ -19,10 +19,10 @@ def test_map_data_table_adds_event_triples(tmp_path):
     data.write_parquet(path)
 
     # Pass list[Path] as expected
-    load_and_parse_meds_table(
+    load_and_parse_meds_table2(
         files_path=[path],
         entity="Event",
-        map=map_event,
+        map=map_event_df,
         storage=graph,
         provenance=None
     )
