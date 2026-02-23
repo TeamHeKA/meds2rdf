@@ -124,10 +124,9 @@ def _run_in_parallel(
     #return nt_triples
 
 
-def stream_to_nt_file(triple_generator, output_path: str):
-    with open(output_path, "w", encoding="utf-8") as f:
-        for s, p, o in triple_generator:
-            f.write(f"{s.n3()} {p.n3()} {o.n3()} .\n")
+def stream_to_nt_file(triple_generator, file_handle):
+    for s, p, o in triple_generator:
+        file_handle.write(f"{s.n3()} {p.n3()} {o.n3()} .\n")
 
 def _run_with_polars(
     data: pl.LazyFrame,
@@ -136,36 +135,38 @@ def _run_with_polars(
     graph: Graph | None = None,
     dataset_uri: URIRef | None = None,
 ) -> None:
-    """
-    Stream parquet with Polars (multithreaded),
-    map batch-wise using generator,
-    and insert triples with addN().
-    """
+
     total_rows = data.select(pl.len()).collect().item()
     total_batches = math.ceil(total_rows / BATCH_SIZE)
 
     offset = 0
 
-    with tqdm(total=total_batches, desc=f"Processing {entity}") as pbar:
+    # Open once if streaming to file
+    file_handle = None
+    if graph is None:
+        file_handle = open("events.nt", "w", encoding="utf-8")
 
-        for batch in (data.collect(engine="streaming").iter_slices(n_rows=BATCH_SIZE)):
-            if batch.is_empty():
-                continue
+    try:
+        with tqdm(total=total_batches, desc=f"Processing {entity}") as pbar:
 
-            # triples_iter = run_df(batch, offset, dataset_uri)
-            # addN expects (s, p, o, graph)
-            # graph.addN((s, p, o, graph) for s, p, o in triples_iter)
+            for batch in data.collect(engine="streaming").iter_slices(n_rows=BATCH_SIZE):
 
-           # stream_to_nt_file(triples_generator=run_df(batch, offset, dataset_uri), "events.nt")
+                if batch.is_empty():
+                    continue
 
-            if graph is not None:
-                graph.addN((s, p, o, graph) for s, p, o in run_df(batch, offset, dataset_uri))
-            else:
-                stream_to_nt_file(triple_generator=run_df(batch, offset, dataset_uri), output_path="events.nt")
-        
-            offset += len(batch)
-            pbar.update(1)
+                triples_iter = run_df(batch, offset, dataset_uri)
 
+                if graph is not None:
+                    graph.addN((s, p, o, graph) for s, p, o in triples_iter)
+                else:
+                    stream_to_nt_file(triples_iter, file_handle)
+
+                offset += len(batch)
+                pbar.update(1)
+
+    finally:
+        if file_handle is not None:
+            file_handle.close()
 
 def load_and_parse_meds_table2(
     files_path: list[Path],
@@ -198,7 +199,8 @@ def load_and_parse_dataset_table(
         if storage is not None:
             storage.addN((s, p, o, storage) for s, p, o in map(metadata_dict, dataset_uri))
         else:
-            stream_to_nt_file(triple_generator=map(metadata_dict, dataset_uri), output_path="events.nt")
+            file_handle = open("events.nt", "w", encoding="utf-8")
+            stream_to_nt_file(triple_generator=map(metadata_dict, dataset_uri), file_handle=file_handle)
         pbar.update(1)
 
 
