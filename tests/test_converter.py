@@ -188,14 +188,18 @@ def test_convert_and_validate_shacl(monkeypatch):
             pl.DataFrame(mock_labels).lazy(),  # labels
         ]
 
-        converter = MedsRDFConverter("dummy/path")
-        data_graph = converter.convert(
-            include_dataset_metadata=True,
-            include_codes=True,
-            include_labels=True,
-            include_splits=True,
-            shacl_path=SHACL_SHAPES_URL
-        )
+        engine = MedsRDFConverter("dummy/path")
+        # Requires `rdflib-sqlalchemy` installed
+
+        # Context manager ensures automatic cleanup
+        with engine:
+            data_graph = engine.convert(
+                include_dataset_metadata=True,
+                include_codes=True,
+                include_labels=True,
+                include_splits=True,
+                shacl_path=SHACL_SHAPES_URL
+            )
 
     # Sanity check — we *have* an rdflib.Graph
     assert isinstance(data_graph, Graph)

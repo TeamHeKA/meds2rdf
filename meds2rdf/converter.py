@@ -4,9 +4,7 @@ from pathlib import Path
 from typing import Optional
 import logging
 
-from rdflib import Graph, plugin
-from rdflib.store import Store
-from rdflib.plugin import PluginException
+from rdflib import Graph
 
 from .mapping.event_mapper import map_event, map_event_df
 from .mapping.code_mapper import map_code
@@ -37,94 +35,28 @@ class MedsRDFConverter:
     def __init__(
         self,
         meds_root: str | Path,
-        persistent_store: bool = False,
     ):
         self.meds_root = Path(meds_root)
-        self.persistent_store = bool(persistent_store)
-        self._user_store_path = Path("meds_store.sqlite")
-
         self.graph: Optional[Graph] = None
-        self._store_cls = None
-        self._initialized = False
 
-    # ------------------------------
-    # Store initialization / lifecycle
-    # ------------------------------
-    def _ensure_store_class(self):
-        """Try to get the SQLAlchemy store plugin class, or raise a helpful error."""
-        if self._store_cls is not None:
-            return self._store_cls
-
-        try:
-            self._store_cls = plugin.get("SQLAlchemy", Store)
-            return self._store_cls
-        except PluginException:
-            # Provide a helpful message for users who forgot to install rdflib-sqlalchemy
-            raise RuntimeError(
-                "Persistent SQL store requested but no 'SQLAlchemy' rdflib store plugin is registered. "
-                "Install the plugin with `pip install rdflib-sqlalchemy` and ensure it is importable."
-            ) from None
-
-    def open_store(self):
-        if self.persistent_store:
-            store_cls = self._ensure_store_class()
-            store = store_cls("meds_store")
-            self.graph = Graph(store=store)
-
-            if self._user_store_path is None:
-                raise ValueError("persistent_store=True requires store_path or store_url")
-            p = Path(self._user_store_path)
-            p.parent.mkdir(parents=True, exist_ok=True)
-            db_url = f"sqlite:///{str(p)}"
-
-            # Open the store. create=True ensures file/tables are set up.
-            self.graph.open(db_url, create=True)
-            logger.debug("Opened SQLAlchemy-backed graph at %s", db_url)
-
-        else:
-            # in-memory graph
-            self.graph = Graph()
-            logger.debug("Created in-memory graph")
-
-        # Bind useful namespaces
+    def load_in_memory(self):
+        self.graph = Graph()
+        logger.debug("Created in-memory graph")
         self.graph.bind("meds", MEDS)
         self.graph.bind("meds-data", MEDS_INSTANCES)
 
-        self._initialized = True
-
-    def close(self):
-        """Close the graph/store if open. Safe to call multiple times."""
-        if self.graph is None:
-            return
-        try:
-            self.graph.close()
-            logger.debug("Closed graph/store")
-        finally:
-            self.graph = None
-            self._initialized = False
-
-    def erase_database(self):
-        """Close and remove the underlying SQLite file (if using file-based SQLite)."""
-        if self.graph is not None:
-            self.close()
-        if self._user_store_path:
-            p = Path(self._user_store_path)
-            try:
-                if p.exists():
-                    p.unlink()
-                    logger.info("Removed database file %s", p)
-            except Exception as exc:
-                logger.warning("Failed to remove database file %s: %s", p, exc)
+    def erase(self):
+        self.graph = None
 
     # Context manager support
     def __enter__(self) -> "MedsRDFConverter":
         # open lazily so __init__ remains cheap
-        self.open_store()
+        self.load_in_memory()
         return self
 
     def __exit__(self, exc_type, exc, tb):
         # Always close resources on exit
-        self.close()
+        self.erase()
 
     # ------------------------------
     # Top-level conversion API
@@ -147,7 +79,7 @@ class MedsRDFConverter:
         -------
         rdflib.Graph
         """
-        self.open_store()
+        self.load_in_memory()
 
         dataset_uri = None
 

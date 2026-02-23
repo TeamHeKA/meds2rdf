@@ -105,13 +105,15 @@ def _run_in_parallel(
             ]
 
             # Parallel write for this batch
-            for triples in tqdm(
+            for lt in tqdm(
                 executor.map(_process_chunk_nt, args),
                 total=len(chunks),
                 desc=f"Writing batch {batch_counter}"
             ):
                 #nt_triples.append(triples)
-                graph.addN(triples)
+                #graph.add(s, p, o)
+                for s, p, o in lt:
+                    graph.add((s, p, o))
 
             # --- Release memory per batch ---
             pbar.update(1)
@@ -121,11 +123,19 @@ def _run_in_parallel(
 
     #return nt_triples
 
+
+def stream_to_nt_file(triple_generator, output_path: str, graph: Graph | None = None):
+    with open(output_path, "w", encoding="utf-8") as f:
+        for s, p, o in triple_generator:
+            f.write(f"{s.n3()} {p.n3()} {o.n3()} .\n")
+            if graph is not None:
+                graph.add((s, p, o))
+
 def _run_with_polars(
     files_path: list[Path],
     run_df,
     entity: str,
-    graph: Graph,
+    graph: Graph | None = None,
     dataset_uri: URIRef | None = None,
 ) -> None:
     """
@@ -143,18 +153,18 @@ def _run_with_polars(
 
     with tqdm(total=total_batches, desc=f"Processing {entity}") as pbar:
 
-        for batch in (
-            data.collect(engine="streaming")
-            .iter_slices(n_rows=BATCH_SIZE)
-        ):
+        for batch in (data.collect(engine="streaming").iter_slices(n_rows=BATCH_SIZE)):
             if batch.is_empty():
                 continue
 
-            triples_iter = run_df(batch, offset, dataset_uri)
-
+            # triples_iter = run_df(batch, offset, dataset_uri)
             # addN expects (s, p, o, graph)
-            graph.addN((s, p, o, graph) for s, p, o in triples_iter)
+            # graph.addN((s, p, o, graph) for s, p, o in triples_iter)
 
+           # stream_to_nt_file(triples_generator=run_df(batch, offset, dataset_uri), "events.nt")
+
+            stream_to_nt_file(triple_generator=run_df(batch, offset, dataset_uri), output_path="events.nt", graph=graph)
+        
             offset += len(batch)
             pbar.update(1)
 

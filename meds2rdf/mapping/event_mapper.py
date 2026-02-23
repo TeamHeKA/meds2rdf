@@ -1,3 +1,5 @@
+from typing import Generator
+
 from rdflib import URIRef, Literal
 from rdflib.namespace import RDF, XSD, PROV
 import polars as pl
@@ -54,35 +56,41 @@ def map_event_df(
     df: pl.DataFrame,
     offset: int,
     dataset_uri: URIRef | None = None
-):
+) -> Generator[
+    tuple[URIRef, URIRef, URIRef | Literal],
+    None,
+    None
+]:
     """
     Yield triples for a batch of events.
-    Generator-based (no large intermediate list).
+    Optimized for large DataFrames (500k+ rows).
+    Avoids to_list() materialization.
     """
 
-    subject_ids = df["subject_id"].to_list()
-    codes = df["code"].to_list()
+    # ---- Precompute column indices (O(n_cols), done once) ----
+    col_idx = {name: i for i, name in enumerate(df.columns)}
 
-    times = df["time"].to_list() if "time" in df.columns else None
-    numeric_vals = df["numeric_value"].to_list() if "numeric_value" in df.columns else None
-    text_vals = df["text_value"].to_list() if "text_value" in df.columns else None
+    has_time = "time" in col_idx
+    has_numeric = "numeric_value" in col_idx
+    has_text = "text_value" in col_idx
 
-    # ---- Deduplicate subjects per batch (major performance win) ----
-    seen_subjects = set()
+    # ---- Caches (major performance wins at scale) ----
+    seen_subjects: set = set()
+    code_cache: dict = {}
 
-    for i, sid in enumerate(subject_ids):
+    # ---- Row streaming iteration (no Python list materialization) ----
+    for i, row in enumerate(df.iter_rows()):
+
+        sid = row[col_idx["subject_id"]]
+        code_str = row[col_idx["code"]]
 
         subject_uri = URIRef(MEDS_INSTANCES[f"subject/{sid}"])
 
+        # ---- Deduplicate subjects per batch ----
         if sid not in seen_subjects:
             seen_subjects.add(sid)
-
             yield (subject_uri, RDF.type, MEDS.Subject)
-            yield (
-                subject_uri,
-                MEDS.subjectId,
-                Literal(str(sid), datatype=XSD.string),
-            )
+            yield (subject_uri, MEDS.subjectId, Literal(str(sid), datatype=XSD.string))
 
         row_index = offset + i
         event_uri = URIRef(MEDS_INSTANCES[f"event/{sid}_{row_index}"])
@@ -90,15 +98,14 @@ def map_event_df(
         yield (event_uri, RDF.type, MEDS.Event)
         yield (event_uri, MEDS.hasSubject, subject_uri)
 
-        # ---- Code ----
-        code_str = codes[i]
-        yield (
-            event_uri,
-            MEDS.codeString,
-            Literal(str(code_str), datatype=XSD.string),
-        )
+        # ---- Code literal ----
+        yield (event_uri, MEDS.codeString, Literal(str(code_str), datatype=XSD.string))
 
-        code_uri, code_triples = generate_code(code_str=code_str)
+        # ---- Cached code generation ----
+        if code_str not in code_cache:
+            code_cache[code_str] = generate_code(code_str=code_str)
+
+        code_uri, code_triples = code_cache[code_str]
 
         for triple in code_triples:
             yield triple
@@ -106,27 +113,21 @@ def map_event_df(
         yield (event_uri, MEDS.hasCode, code_uri)
 
         # ---- Provenance ----
-        if dataset_uri:
+        if dataset_uri is not None:
             yield (event_uri, PROV.wasDerivedFrom, dataset_uri)
 
         # ---- Optional literals ----
-        if times and times[i] is not None:
-            yield (
-                event_uri,
-                MEDS.time,
-                Literal(times[i], datatype=XSD.dateTime),
-            )
+        if has_time:
+            time_val = row[col_idx["time"]]
+            if time_val is not None:
+                yield (event_uri, MEDS.time, Literal(time_val, datatype=XSD.dateTime))
 
-        if numeric_vals and numeric_vals[i] is not None:
-            yield (
-                event_uri,
-                MEDS.numericValue,
-                Literal(numeric_vals[i], datatype=XSD.double),
-            )
+        if has_numeric:
+            numeric_val = row[col_idx["numeric_value"]]
+            if numeric_val is not None:
+                yield (event_uri, MEDS.numericValue, Literal(numeric_val, datatype=XSD.double))
 
-        if text_vals and text_vals[i] is not None:
-            yield (
-                event_uri,
-                MEDS.textValue,
-                Literal(text_vals[i], datatype=XSD.string),
-            )
+        if has_text:
+            text_val = row[col_idx["text_value"]]
+            if text_val is not None:
+                yield (event_uri, MEDS.textValue, Literal(text_val, datatype=XSD.string))
