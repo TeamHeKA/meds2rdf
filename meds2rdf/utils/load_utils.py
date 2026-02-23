@@ -124,12 +124,10 @@ def _run_in_parallel(
     #return nt_triples
 
 
-def stream_to_nt_file(triple_generator, output_path: str, graph: Graph | None = None):
+def stream_to_nt_file(triple_generator, output_path: str):
     with open(output_path, "w", encoding="utf-8") as f:
         for s, p, o in triple_generator:
             f.write(f"{s.n3()} {p.n3()} {o.n3()} .\n")
-            if graph is not None:
-                graph.add((s, p, o))
 
 def _run_with_polars(
     files_path: list[Path],
@@ -163,7 +161,10 @@ def _run_with_polars(
 
            # stream_to_nt_file(triples_generator=run_df(batch, offset, dataset_uri), "events.nt")
 
-            stream_to_nt_file(triple_generator=run_df(batch, offset, dataset_uri), output_path="events.nt", graph=graph)
+            if graph is not None:
+                graph.addN((s, p, o, graph) for s, p, o in run_df(batch, offset, dataset_uri))
+            else:
+                stream_to_nt_file(triple_generator=run_df(batch, offset, dataset_uri), output_path="events.nt")
         
             offset += len(batch)
             pbar.update(1)
