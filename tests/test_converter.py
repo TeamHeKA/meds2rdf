@@ -1,11 +1,12 @@
 # tests/test_shacl_validation.py
-from pathlib import Path
-from rdflib import Graph
-from meds2rdf.converter import MedsRDFConverter
 import json
+from pathlib import Path
 from unittest.mock import MagicMock, patch
-import polars as pl
 
+import polars as pl
+from rdflib import Graph
+
+from meds2rdf.converter import MedsRDFConverter
 from meds2rdf.utils.rdf_utils import run_shacl_validation
 
 # You can reuse your mocks from previous tests:
@@ -36,7 +37,6 @@ mock_data = [
         "text_value": "F",
         "numeric_value": None,
     },
-
     # Subject 1 — age
     {
         "subject_id": 11111111,
@@ -45,7 +45,6 @@ mock_data = [
         "numeric_value": 45,
         "text_value": None,
     },
-
     # Subject 1 — lab event with unit modifier
     {
         "subject_id": 22222222,
@@ -54,7 +53,6 @@ mock_data = [
         "numeric_value": 120.5,
         "text_value": None,
     },
-
     # Subject 1 — event with image value modality
     {
         "subject_id": 33333333,
@@ -62,9 +60,8 @@ mock_data = [
         "code": "RADIOLOGY//CHEST_XRAY",
         "numeric_value": None,
         "text_value": None,
-        "image_path": "/images/xray_11111111_0001.png"
+        "image_path": "/images/xray_11111111_0001.png",
     },
-
     # Subject 2 — minimal data
     {
         "subject_id": 44444444,
@@ -79,43 +76,31 @@ mock_codes = [
     {
         "code": "DEMOGRAPHICS//GENDER",
         "description": "Administrative sex of patient",
-        "parent_codes": ["ICD10:AAAA"]
+        "parent_codes": ["ICD10:AAAA"],
     },
-    {
-        "code": "DEMOGRAPHICS//AGE",
-        "description": "Age in years",
-        "parent_codes": ["ICD10:AAAA"]
-    },
+    {"code": "DEMOGRAPHICS//AGE", "description": "Age in years", "parent_codes": ["ICD10:AAAA"]},
     {
         "code": "LAB//GLUCOSE",
         "description": "Blood glucose level",
-        "parent_codes": ["ICD10:AAAA", "ICD10:BBB"]
+        "parent_codes": ["ICD10:AAAA", "ICD10:BBB"],
     },
     {
         "code": "RADIOLOGY//CHEST_XRAY",
         "description": "AP/PA Chest X-ray",
-        "parent_codes": ["ICD10:AAAA"]
+        "parent_codes": ["ICD10:AAAA"],
     },
     {
         "code": "DEMOGRAPHICS//ROOT",
         "description": "Demographic information root",
-        "parent_codes": []
+        "parent_codes": [],
     },
     {
         "code": "LAB//CHEMISTRY",
         "description": "Chemistry lab panel",
-        "parent_codes": ["ICD10:AAAA"]
+        "parent_codes": ["ICD10:AAAA"],
     },
-    {
-        "code": "LAB//ROOT",
-        "description": "Laboratory results root",
-        "parent_codes": []
-    },
-    {
-        "code": "RADIOLOGY//ROOT",
-        "description": "Radiology studies root",
-        "parent_codes": []
-    }
+    {"code": "LAB//ROOT", "description": "Laboratory results root", "parent_codes": []},
+    {"code": "RADIOLOGY//ROOT", "description": "Radiology studies root", "parent_codes": []},
 ]
 
 mock_splits = [
@@ -128,33 +113,22 @@ mock_splits = [
 
 mock_labels = [
     # boolean label
-    {
-        "subject_id": 11111111,
-        "prediction_time": "2025-01-02T00:00:00",
-        "boolean_value": True
-    },
+    {"subject_id": 11111111, "prediction_time": "2025-01-02T00:00:00", "boolean_value": True},
     # integer label
-    {
-        "subject_id": 11111111,
-        "prediction_time": "2025-01-02T00:00:00",
-        "integer_value": 3
-    },
+    {"subject_id": 11111111, "prediction_time": "2025-01-02T00:00:00", "integer_value": 3},
     # float label
-    {
-        "subject_id": 22222222,
-        "prediction_time": "2025-01-03T05:00:00",
-        "float_value": 12.7
-    },
+    {"subject_id": 22222222, "prediction_time": "2025-01-03T05:00:00", "float_value": 12.7},
     # categorical label
     {
         "subject_id": 33333333,
         "prediction_time": "2025-01-04T10:00:00",
-        "categorical_value": "SEVERE"
+        "categorical_value": "SEVERE",
     },
 ]
 
 # Path to the remote SHACL shapes you want to validate against:
 SHACL_SHAPES_URL = "https://raw.githubusercontent.com/TeamHeKA/meds-ontology/refs/tags/v1.0.2/shacl/meds-shapes.ttl"
+
 
 def fake_task_dir(name: str):
     task = MagicMock(spec=Path)
@@ -164,33 +138,36 @@ def fake_task_dir(name: str):
 
     return task
 
+
 def _fake_task_dir(name):
     p = MagicMock(spec=Path)
     p.is_dir.return_value = True
     p.name = name
     p.iterdir.return_value = []  # no splits inside for now
-    p.rglob.return_value = []    # no parquet files
+    p.rglob.return_value = []  # no parquet files
     return p
+
 
 def test_convert_and_validate_shacl(monkeypatch, tmp_path):
     """
     Tests that the output RDF graph from MedsRDFConverter conforms to the MEDS SHACL shapes.
     """
-    with patch("pathlib.Path.exists", return_value=True), \
-        patch("pathlib.Path.iterdir") as mock_iterdir, \
-        patch("polars.scan_parquet") as mock_scan:
-
+    with (
+        patch("pathlib.Path.exists", return_value=True),
+        patch("pathlib.Path.iterdir") as mock_iterdir,
+        patch("polars.scan_parquet") as mock_scan,
+    ):
         mock_iterdir.return_value = [_fake_task_dir("task1")]
 
         mock_scan.side_effect = [
-            pl.DataFrame(mock_data).lazy(),    # data
-            pl.DataFrame(mock_codes).lazy(),   # codes
+            pl.DataFrame(mock_data).lazy(),  # data
+            pl.DataFrame(mock_codes).lazy(),  # codes
             pl.DataFrame(mock_splits).lazy(),  # splits
             pl.DataFrame(mock_labels).lazy(),  # labels
         ]
 
         engine = MedsRDFConverter(tmp_path)
-        temp_dir = (tmp_path / "metadata")
+        temp_dir = tmp_path / "metadata"
         temp_dir.mkdir()
         with open(temp_dir / "dataset.json", "w", encoding="utf-8") as f:
             json.dump(mock_dataset_metadata, f, indent=4, ensure_ascii=False)
@@ -204,11 +181,9 @@ def test_convert_and_validate_shacl(monkeypatch, tmp_path):
                 include_labels=True,
                 include_splits=True,
             )
-            
-        
+
         if data_graph is not None:
             run_shacl_validation(data_graph, SHACL_SHAPES_URL)
-        
 
     # Sanity check — we *have* an rdflib.Graph
     assert isinstance(data_graph, Graph)

@@ -1,8 +1,9 @@
-from typing import Generator
-
-from rdflib import URIRef, Literal
-from rdflib.namespace import RDF, RDFS, XSD, DCTERMS as DCT, PROV, DCAT
 import uuid
+from collections.abc import Generator
+
+from rdflib import Literal, URIRef
+from rdflib.namespace import DCAT, PROV, RDF, RDFS, XSD
+from rdflib.namespace import DCTERMS as DCT
 
 from ..namespace import MEDS, MEDS_INSTANCES
 from ..utils.rdf_utils import to_literal
@@ -25,6 +26,7 @@ _column_list_dict = {
     "additional_value_modality_columns": (MEDS.additionalValueModalityColumn, XSD.string),
     "other_extension_columns": (MEDS.otherExtensionColumn, XSD.string),
 }
+
 
 def map_dataset_metadata_df(
     shards: dict,
@@ -49,7 +51,7 @@ def map_dataset_metadata_df(
     for field, (prop, dtype) in _column_list_dict.items():
         if field in shards and shards[field]:
             values = shards[field]
-            if not isinstance(values, (list, tuple)):
+            if not isinstance(values, list | tuple):
                 values = [values]
             for v in values:
                 yield (dataset_uri, prop, to_literal(v, dtype))

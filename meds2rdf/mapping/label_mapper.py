@@ -1,8 +1,9 @@
-from typing import Generator
+from collections.abc import Generator
 
-from rdflib import URIRef, RDF, XSD, PROV, Literal
-from ..namespace import MEDS, MEDS_INSTANCES
 import polars as pl
+from rdflib import PROV, RDF, XSD, Literal, URIRef
+
+from ..namespace import MEDS, MEDS_INSTANCES
 
 _literals_dict = {
     "description": (MEDS.codeDescription, XSD.string),
@@ -12,6 +13,7 @@ _literals_dict = {
     "float_value": (MEDS.floatValue, XSD.double),
     "categorical_value": (MEDS.categoricalValue, XSD.string),
 }
+
 
 def map_label_df(
     df: pl.DataFrame,
@@ -40,13 +42,10 @@ def map_label_df(
 
     # ---- Streaming iteration ----
     for i, row in enumerate(df.iter_rows()):
-
         subject_id = row[col_idx["subject_id"]]
         subject_uri = URIRef(MEDS_INSTANCES[f"subject/{subject_id}"])
 
-        label_uri = URIRef(
-            MEDS_INSTANCES[f"label/{subject_id}_{offset + i}"]
-        )
+        label_uri = URIRef(MEDS_INSTANCES[f"label/{subject_id}_{offset + i}"])
 
         yield (label_uri, RDF.type, MEDS.LabelSample)
         yield (label_uri, MEDS.hasSubject, subject_uri)
@@ -54,7 +53,7 @@ def map_label_df(
         # ---- Literal fields ----
         for _, (idx, predicate, dtype) in literal_columns.items():
             value = row[idx]
-            if value is not None:   
+            if value is not None:
                 yield (
                     label_uri,
                     predicate,

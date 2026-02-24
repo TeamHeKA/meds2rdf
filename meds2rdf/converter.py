@@ -1,35 +1,35 @@
 # meds2rdf/converter.py
 from __future__ import annotations
-from pathlib import Path
-from typing import Optional
+
 import logging
+from pathlib import Path
 
 from rdflib import Graph, URIRef
 
-from .mapping.event_mapper import map_event_df
 from .mapping.code_mapper import map_code_df
+from .mapping.event_mapper import map_event_df
 from .mapping.label_mapper import map_label_df
-from .mapping.split_mapper import map_split_df
 from .mapping.metadata_mapper import map_dataset_metadata_df
-
+from .mapping.split_mapper import map_split_df
 from .namespace import MEDS, MEDS_INSTANCES
-from .utils.rdf_utils import run_shacl_validation
-from .utils.load_utils import load_and_parse_meds_table, load_task_labels_files, load_and_parse_dataset_table
+from .utils.load_utils import (
+    load_and_parse_dataset_table,
+    load_and_parse_meds_table,
+    load_task_labels_files,
+)
 
 logger = logging.getLogger(__name__)
 
 
 class MedsRDFConverter:
     """
-    Convert a MEDS dataset directory to rdflib.Graph, with optional persistent SQLAlchemy-backed store.
+    Convert a MEDS dataset directory to rdflib.Graph,
+    with optional persistent SQLAlchemy-backed store.
 
     Parameters
     ----------
     meds_root : str | Path
         Root folder of the MEDS dataset
-    persistent_store : bool
-        If True, attempt to use a persistent SQLAlchemy-backed store (requires `rdflib-sqlalchemy`).
-        If False (default), uses an in-memory Graph.
     """
 
     def __init__(
@@ -37,7 +37,7 @@ class MedsRDFConverter:
         meds_root: str | Path,
     ):
         self.meds_root = Path(meds_root)
-        self.graph: Optional[Graph] = None
+        self.graph = None
 
     def load_in_memory(self):
         self.graph = Graph()
@@ -49,13 +49,11 @@ class MedsRDFConverter:
         del self.graph
 
     # Context manager support
-    def __enter__(self) -> "MedsRDFConverter":
-        # open lazily so __init__ remains cheap
+    def __enter__(self) -> MedsRDFConverter:
         self.load_in_memory()
         return self
 
     def __exit__(self, exc_type, exc, tb):
-        # Always close resources on exit
         self.erase()
 
     # ------------------------------
@@ -69,38 +67,30 @@ class MedsRDFConverter:
         include_splits: bool = False,
     ) -> Graph | None:
         """
-        Convert an entire MEDS dataset directory to RDF and return the rdflib.Graph.
-
-        Note: This method does not automatically close the graph even if persistent_store=True.
-        Use `keep_open=False` or call `.close()` when finished, or use the context manager.
-
-        Returns
-        -------
-        rdflib.Graph
+        Convert an entire MEDS dataset directory to RDF
         """
         dataset_uri = None
 
         # 1. Dataset metadata
         if include_dataset_metadata:
-            
             import uuid
 
             dataset_uri = URIRef(MEDS_INSTANCES[f"dataset_metadata/{uuid.uuid4()}"])
-            
+
             load_and_parse_dataset_table(
                 file_path=(self.meds_root / "metadata" / "dataset.json"),
                 map=map_dataset_metadata_df,
                 storage=self.graph,
-                dataset_uri=dataset_uri
+                dataset_uri=dataset_uri,
             )
 
         # 2. Data tables
         load_and_parse_meds_table(
-             files_path=list((self.meds_root / "data").rglob("*.parquet")),
-             entity="Event",
-             map=map_event_df,
-             storage=self.graph,
-             provenance=dataset_uri
+            files_path=list((self.meds_root / "data").rglob("*.parquet")),
+            entity="Event",
+            map=map_event_df,
+            storage=self.graph,
+            provenance=dataset_uri,
         )
 
         # 3. Codes
@@ -110,7 +100,7 @@ class MedsRDFConverter:
                 entity="Code",
                 map=map_code_df,
                 storage=self.graph,
-                provenance=dataset_uri
+                provenance=dataset_uri,
             )
 
         # 4. Subject splits
@@ -119,7 +109,7 @@ class MedsRDFConverter:
                 files_path=[self.meds_root / "metadata" / "subject_splits.parquet"],
                 entity="SubjectSplit",
                 map=map_split_df,
-                storage=self.graph
+                storage=self.graph,
             )
 
         # 5. Labels
@@ -128,7 +118,7 @@ class MedsRDFConverter:
                 files_path=load_task_labels_files(self.meds_root / "labels"),
                 entity="Label",
                 map=map_label_df,
-                storage=self.graph
+                storage=self.graph,
             )
 
         return self.graph

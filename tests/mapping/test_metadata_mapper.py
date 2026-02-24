@@ -1,10 +1,13 @@
 import json
 from pathlib import Path
 
-from rdflib import Graph, Literal, XSD, URIRef, RDF, RDFS, DCAT, PROV, DCTERMS as DCT
+from rdflib import DCAT, PROV, RDF, RDFS, XSD, Graph, Literal, URIRef
+from rdflib import DCTERMS as DCT
+
 from meds2rdf.mapping.metadata_mapper import map_dataset_metadata_df
-from meds2rdf.utils.load_utils import load_and_parse_dataset_table
 from meds2rdf.namespace import MEDS, MEDS_INSTANCES
+from meds2rdf.utils.load_utils import load_and_parse_dataset_table
+
 
 def test_map_dataset_metadata_adds_triples(tmp_path):
     graph = Graph()
@@ -26,20 +29,17 @@ def test_map_dataset_metadata_adds_triples(tmp_path):
         "raw_source_id_columns": ["source_id_1"],
         "code_modifier_columns": ["modifier_1", "modifier_2"],
         "additional_value_modality_columns": ["modality_1"],
-        "other_extension_columns": ["extra_column"]
+        "other_extension_columns": ["extra_column"],
     }
 
-    dataset_uri = URIRef(MEDS_INSTANCES[f"dataset_metadata/1"])
+    dataset_uri = URIRef(MEDS_INSTANCES["dataset_metadata/1"])
 
     path = Path(tmp_path / "metadata.json")
     with open(path, "w", encoding="utf-8") as f:
         json.dump(metadata, f, indent=4, ensure_ascii=False)
 
     load_and_parse_dataset_table(
-        file_path=path,
-        map=map_dataset_metadata_df,
-        storage=graph,
-        dataset_uri=dataset_uri
+        file_path=path, map=map_dataset_metadata_df, storage=graph, dataset_uri=dataset_uri
     )
 
     graph.print()
@@ -50,9 +50,13 @@ def test_map_dataset_metadata_adds_triples(tmp_path):
     # Literal assertions
     assert (dataset_uri, MEDS.medsVersion, Literal("0.3.3", datatype=XSD.string)) in graph
     assert (dataset_uri, DCT.title, Literal("Demo Dataset", datatype=XSD.string)) in graph
-    #assert (dataset_uri, DCT.hasVersion, Literal("1.0", datatype=XSD.string)) in graph
-    assert (dataset_uri, DCT.created,Literal("2025-01-01T00:00:00", datatype=XSD.dateTime)) in graph
-    #assert (dataset_uri, DCT.license, URIRef("https://opensource.org/licenses/MIT")) in graph
+    # assert (dataset_uri, DCT.hasVersion, Literal("1.0", datatype=XSD.string)) in graph
+    assert (
+        dataset_uri,
+        DCT.created,
+        Literal("2025-01-01T00:00:00", datatype=XSD.dateTime),
+    ) in graph
+    # assert (dataset_uri, DCT.license, URIRef("https://opensource.org/licenses/MIT")) in graph
 
     # Check repeated column literals
     for site_id in metadata["site_id_columns"]:
@@ -73,8 +77,6 @@ def test_map_dataset_metadata_adds_triples(tmp_path):
     activity_uri = activity_triples[0][2]
     assert (activity_uri, RDF.type, PROV.Activity) in graph
     assert (activity_uri, RDFS.label, Literal(metadata["etl_name"], datatype=XSD.string)) in graph
-    # assert (activity_uri, DCAT.hasVersion, Literal(metadata["etl_version"], datatype=XSD.string)) in graph
     # notes concatenated
     combined_notes = metadata["etl_notes"] + "\n\n" + metadata["protocol_notes"]
     assert (activity_uri, RDFS.comment, Literal(combined_notes, datatype=XSD.string)) in graph
-

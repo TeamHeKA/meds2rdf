@@ -1,21 +1,16 @@
-from typing import Generator
+from collections.abc import Generator
 
-from rdflib import URIRef, Literal
-from rdflib.namespace import RDF, XSD, PROV
 import polars as pl
+from rdflib import Literal, URIRef
+from rdflib.namespace import PROV, RDF, XSD
 
 from ..namespace import MEDS, MEDS_INSTANCES
 from ..utils.rdf_utils import generate_code
 
+
 def map_event_df(
-    df: pl.DataFrame,
-    offset: int,
-    dataset_uri: URIRef | None = None
-) -> Generator[
-    tuple[URIRef, URIRef, URIRef | Literal],
-    None,
-    None
-]:
+    df: pl.DataFrame, offset: int, dataset_uri: URIRef | None = None
+) -> Generator[tuple[URIRef, URIRef, URIRef | Literal], None, None]:
     """
     Yield triples for a batch of events.
     Optimized for large DataFrames (500k+ rows).
@@ -61,8 +56,7 @@ def map_event_df(
 
         code_uri, code_triples = code_cache[code_str]
 
-        for triple in code_triples:
-            yield triple
+        yield from code_triples
 
         yield (event_uri, MEDS.hasCode, code_uri)
 

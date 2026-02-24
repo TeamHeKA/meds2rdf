@@ -1,8 +1,8 @@
 """meds2rdf: MEDS -> RDF conversion utilities."""
 
+from importlib.metadata import version as get_version
 
 from .converter import MedsRDFConverter
-from importlib.metadata import version as get_version
 
 __all__ = ["MedsRDFConverter"]
 

@@ -1,14 +1,16 @@
-from pathlib import Path
-import polars as pl
+import gzip
 import json
-import os 
-from rdflib import URIRef, Graph
-
-from tqdm import tqdm
 import math
+import os
+from pathlib import Path
 
-BATCH_SIZE = 256_000
+import polars as pl
+from rdflib import Graph, URIRef
+from tqdm import tqdm
+
+BATCH_SIZE = 512_000
 MEDS_NT_COHORT = "MEDS_nt_cohort"
+
 
 def raise_if_not_exist(path: Path):
     if not path.exists():
@@ -16,26 +18,27 @@ def raise_if_not_exist(path: Path):
             f"{path.name.capitalize()} not found at: {path}.\n"
             f"You set 'include_{path.name}=True', but it does not exist."
         )
-    
+
+
 def load_json(path: Path):
     with open(path) as f:
         return json.load(f)
 
-import gzip
 
-def stream_to_nt_gz(triple_generator, output_path: str):
+def stream_to_nt(generator, output_path: str):
     with gzip.open(output_path, "wt", encoding="utf-8") as f:
-        for s, p, o in triple_generator:
+        # with open(output_path, "w", encoding="utf-8") as f:
+        for s, p, o in generator:
             f.write(f"{s.n3()} {p.n3()} {o.n3()} .\n")
+
 
 def _run_with_polars(
     data: pl.LazyFrame,
-    run_df,
+    MAP,
     entity: str,
     storage: Graph | None = None,
     dataset_uri: URIRef | None = None,
 ) -> None:
-
     total_rows = data.select(pl.len()).collect().item()
     total_batches = math.ceil(total_rows / BATCH_SIZE)
 
@@ -45,24 +48,23 @@ def _run_with_polars(
         os.makedirs(f"{MEDS_NT_COHORT}/{entity}s", exist_ok=True)
 
     with tqdm(total=total_batches, desc=f"Processing {entity}") as pbar:
-
         for batch in data.collect(engine="streaming").iter_slices(n_rows=BATCH_SIZE):
-
             if batch.is_empty():
                 continue
 
-            triples_iter = run_df(batch, offset, dataset_uri)
+            triples_iter = MAP(batch, offset, dataset_uri)
 
             if storage is not None:
                 storage.addN((s, p, o, storage) for s, p, o in triples_iter)
             else:
-                stream_to_nt_gz(
-                    triples_iter, 
-                    output_path = f"{MEDS_NT_COHORT}/{entity}s/{entity}_{offset:04d}.nt.gz"
+                stream_to_nt(
+                    triples_iter,
+                    output_path=f"{MEDS_NT_COHORT}/{entity}s/{entity}_{offset:06d}.nt.gz",
                 )
 
             offset += len(batch)
             pbar.update(1)
+
 
 def load_and_parse_meds_table(
     files_path: list[Path],
@@ -76,7 +78,7 @@ def load_and_parse_meds_table(
 
     _run_with_polars(
         data=pl.scan_parquet(files_path),
-        run_df=map,
+        MAP=map,
         entity=entity,
         storage=storage,
         dataset_uri=provenance,
@@ -107,10 +109,13 @@ def load_and_parse_dataset_table(
     if storage is None:
         os.makedirs(MEDS_NT_COHORT, exist_ok=True)
 
-    with tqdm(total=1, desc=f"Processing Dataset Metadata") as pbar:
+    with tqdm(total=1, desc="Processing Dataset Metadata") as pbar:
         metadata_dict = load_json(file_path)
         if storage is not None:
             storage.addN((s, p, o, storage) for s, p, o in map(metadata_dict, dataset_uri))
         else:
-            stream_to_nt_gz(map(metadata_dict, dataset_uri), output_path = f"{MEDS_NT_COHORT}/dataset.nt.gz")
+            stream_to_nt(
+                generator=map(metadata_dict, dataset_uri),
+                output_path=f"{MEDS_NT_COHORT}/dataset.nt.gz",
+            )
         pbar.update(1)

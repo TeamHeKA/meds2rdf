@@ -2,15 +2,16 @@
 from meds2rdf.converter import MedsRDFConverter
 from meds2rdf.utils.rdf_utils import run_shacl_validation
 
+
 def test_neurovasc_conversion():
     """
     Tests that the output RDF graph from MedsRDFConverter conforms to the MEDS SHACL shapes.
     """
-    
+
     SHACL_SHAPES_URL = "https://raw.githubusercontent.com/TeamHeKA/meds-ontology/refs/tags/v1.0.2/shacl/meds-shapes.ttl"
 
     engine = MedsRDFConverter("/home/ubuntu/workspace/meds-to-owl-examples/NEUROVASC/MEDS_cohort")
-    
+
     data_graph = None
     # Context manager ensures automatic cleanup
     with engine:
@@ -20,7 +21,6 @@ def test_neurovasc_conversion():
             include_labels=False,
             include_splits=True,
         )
-        
-    
+
     if data_graph is not None:
         run_shacl_validation(data_graph, SHACL_SHAPES_URL)

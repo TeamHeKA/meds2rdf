@@ -1,14 +1,15 @@
-from typing import Generator
+from collections.abc import Generator
 
-from rdflib import URIRef, Literal
-from rdflib.namespace import XSD, PROV
 import polars as pl
+from rdflib import Literal, URIRef
+from rdflib.namespace import PROV, XSD
 
 from ..namespace import MEDS
 from ..utils.rdf_utils import generate_code, generate_code_uri
 
+
 def _map_parent_codes(value, code_cache, internal_code_uri):
-    parent_codes = (value if isinstance(value, (list, tuple)) else [value])
+    parent_codes = value if isinstance(value, list | tuple) else [value]
 
     for parent_code in parent_codes:
         if parent_code:
@@ -21,14 +22,14 @@ def _map_parent_codes(value, code_cache, internal_code_uri):
 
             parent_uri, parent_triples = code_cache[parent_code]
 
-            for triple in parent_triples:
-                yield triple
+            yield from parent_triples
 
             yield (
                 internal_code_uri,
                 MEDS.parentCode,
                 parent_uri,
             )
+
 
 def map_code_df(
     df: pl.DataFrame,
@@ -55,9 +56,8 @@ def map_code_df(
 
     # ---- Row streaming iteration ----
     for _, row in enumerate(df.iter_rows()):
+        code_uri = generate_code_uri(code_str=row[col_idx["code"]])
 
-        code_uri = generate_code_uri(code_str = row[col_idx["code"]])
-        
         # ---- Optional description ----
         if has_description:
             description = row[col_idx["description"]]

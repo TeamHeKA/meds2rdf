@@ -1,16 +1,13 @@
-from typing import Generator
+from collections.abc import Generator
 
-from rdflib import RDF, Literal, URIRef, PROV
 import polars as pl
+from rdflib import PROV, RDF, Literal, URIRef
 
 from ..namespace import MEDS, MEDS_INSTANCES
 
 # Map split names to RDF predicates
-_split_dict = {
-    "train": MEDS.trainSplit,
-    "tuning": MEDS.tuningSplit,
-    "held_out": MEDS.heldOutSplit
-}
+_split_dict = {"train": MEDS.trainSplit, "tuning": MEDS.tuningSplit, "held_out": MEDS.heldOutSplit}
+
 
 def map_split_df(
     df: pl.DataFrame,
@@ -25,7 +22,7 @@ def map_split_df(
     Yield RDF triples for:
     1. Global SubjectSplit definitions (train/tuning/held_out)
     2. Subject assignments to splits from the DataFrame
-    
+
     This is fully streaming and suitable for large datasets.
     """
 
