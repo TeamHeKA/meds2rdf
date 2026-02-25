@@ -39,7 +39,7 @@ def test_map_dataset_metadata_adds_triples(tmp_path):
         json.dump(metadata, f, indent=4, ensure_ascii=False)
 
     load_and_parse_dataset_table(
-        file_path=path, map=map_dataset_metadata_df, storage=graph, dataset_uri=dataset_uri
+        file_path=path, map_fn=map_dataset_metadata_df, storage=graph, dataset_uri=dataset_uri
     )
 
     graph.print()

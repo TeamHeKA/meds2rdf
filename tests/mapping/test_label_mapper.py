@@ -22,7 +22,7 @@ def test_map_label_table_adds_labelsample_triples(tmp_path):
     labels.write_parquet(path)
 
     load_and_parse_meds_table(
-        files_path=[path], entity="Label", map=map_label_df, storage=graph, provenance=None
+        files_path=[path], entity="Label", map_fn=map_label_df, storage=graph, provenance=None
     )
 
     subj_uri = URIRef(MEDS_INSTANCES["subject/1"])

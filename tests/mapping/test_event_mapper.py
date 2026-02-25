@@ -29,7 +29,7 @@ def test_map_data_table_adds_event_triples(tmp_path):
 
     # Pass list[Path] as expected
     load_and_parse_meds_table(
-        files_path=[path], entity="Event", map=map_event_df, storage=graph, provenance=None
+        files_path=[path], entity="Event", map_fn=map_event_df, storage=graph, provenance=None
     )
 
     subj_uri = URIRef(MEDS_INSTANCES["subject/1"])

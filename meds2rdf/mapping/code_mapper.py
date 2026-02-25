@@ -5,7 +5,7 @@ from rdflib import Literal, URIRef
 from rdflib.namespace import PROV, XSD
 
 from ..namespace import MEDS
-from ..utils.rdf_utils import generate_code, generate_code_uri
+from ..utils.rdf_utils import generate_code, generate_code_uri, sanitize_text
 
 
 def _map_parent_codes(value, code_cache, internal_code_uri):
@@ -60,12 +60,12 @@ def map_code_df(
 
         # ---- Optional description ----
         if has_description:
-            description = row[col_idx["description"]]
-            if description is not None:
+            desc = row[col_idx["description"]]
+            if desc is not None:
                 yield (
                     code_uri,
                     MEDS.codeDescription,
-                    Literal(str(description), datatype=XSD.string),
+                    Literal(sanitize_text(str(desc)), datatype=XSD.string),
                 )
 
         # ---- Optional parent codes ----

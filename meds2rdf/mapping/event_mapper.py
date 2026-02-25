@@ -5,7 +5,7 @@ from rdflib import Literal, URIRef
 from rdflib.namespace import PROV, RDF, XSD
 
 from ..namespace import MEDS, MEDS_INSTANCES
-from ..utils.rdf_utils import generate_code
+from ..utils.rdf_utils import generate_code, sanitize_text
 
 
 def map_event_df(
@@ -48,7 +48,11 @@ def map_event_df(
         yield (event_uri, MEDS.hasSubject, subject_uri)
 
         # ---- Code literal ----
-        yield (event_uri, MEDS.codeString, Literal(str(code_str), datatype=XSD.string))
+        yield (
+            event_uri,
+            MEDS.codeString,
+            Literal(sanitize_text(str(code_str)), datatype=XSD.string),
+        )
 
         # ---- Cached code generation ----
         if code_str not in code_cache:
@@ -78,4 +82,8 @@ def map_event_df(
         if has_text:
             text_val = row[col_idx["text_value"]]
             if text_val is not None:
-                yield (event_uri, MEDS.textValue, Literal(text_val, datatype=XSD.string))
+                yield (
+                    event_uri,
+                    MEDS.textValue,
+                    Literal(sanitize_text(text_val), datatype=XSD.string),
+                )

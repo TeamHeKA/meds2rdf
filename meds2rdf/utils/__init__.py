@@ -9,6 +9,7 @@ from .rdf_utils import (
     generate_code,
     generate_code_uri,
     run_shacl_validation,
+    sanitize_text,
     to_literal,
     to_subject_node,
 )
@@ -23,4 +24,5 @@ __all__ = [
     "load_and_parse_meds_table",
     "generate_code_uri",
     "load_and_parse_dataset_table",
+    "sanitize_text",
 ]

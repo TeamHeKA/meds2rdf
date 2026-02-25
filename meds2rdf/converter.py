@@ -79,7 +79,7 @@ class MedsRDFConverter:
 
             load_and_parse_dataset_table(
                 file_path=(self.meds_root / "metadata" / "dataset.json"),
-                map=map_dataset_metadata_df,
+                map_fn=map_dataset_metadata_df,
                 storage=self.graph,
                 dataset_uri=dataset_uri,
             )
@@ -88,7 +88,7 @@ class MedsRDFConverter:
         load_and_parse_meds_table(
             files_path=list((self.meds_root / "data").rglob("*.parquet")),
             entity="Event",
-            map=map_event_df,
+            map_fn=map_event_df,
             storage=self.graph,
             provenance=dataset_uri,
         )
@@ -98,7 +98,7 @@ class MedsRDFConverter:
             load_and_parse_meds_table(
                 files_path=[self.meds_root / "metadata" / "codes.parquet"],
                 entity="Code",
-                map=map_code_df,
+                map_fn=map_code_df,
                 storage=self.graph,
                 provenance=dataset_uri,
             )
@@ -108,7 +108,7 @@ class MedsRDFConverter:
             load_and_parse_meds_table(
                 files_path=[self.meds_root / "metadata" / "subject_splits.parquet"],
                 entity="SubjectSplit",
-                map=map_split_df,
+                map_fn=map_split_df,
                 storage=self.graph,
             )
 
@@ -117,7 +117,7 @@ class MedsRDFConverter:
             load_and_parse_meds_table(
                 files_path=load_task_labels_files(self.meds_root / "labels"),
                 entity="Label",
-                map=map_label_df,
+                map_fn=map_label_df,
                 storage=self.graph,
             )
 

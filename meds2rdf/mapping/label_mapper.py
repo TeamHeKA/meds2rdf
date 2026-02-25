@@ -3,6 +3,8 @@ from collections.abc import Generator
 import polars as pl
 from rdflib import PROV, RDF, XSD, Literal, URIRef
 
+from meds2rdf.utils.rdf_utils import sanitize_text
+
 from ..namespace import MEDS, MEDS_INSTANCES
 
 _literals_dict = {
@@ -54,6 +56,8 @@ def map_label_df(
         for _, (idx, predicate, dtype) in literal_columns.items():
             value = row[idx]
             if value is not None:
+                if dtype == XSD.string:
+                    value = sanitize_text(value)
                 yield (
                     label_uri,
                     predicate,
