@@ -51,28 +51,32 @@ def _run_with_polars(
     No pre-scan.
     Single gzip file.
     """
+    # Ensure output directory exists
     MEDS_NT_COHORT.mkdir(exist_ok=True)
 
     offset = 0
 
-    total_rows = data.select(pl.len()).collect()[0, 0]
+    # Get total number of rows in a memory-efficient way
+    total_rows = data.select(pl.count()).collect()[0, 0]
     num_slices = math.ceil(total_rows / BATCH_SIZE)
 
-    with tqdm(num_slices, desc=f"Processing {entity}", dynamic_ncols=True) as pbar:
+    with tqdm(total=num_slices, desc=f"Processing {entity}", dynamic_ncols=True) as pbar:
         for batch in data.collect(engine="streaming").iter_slices(n_rows=BATCH_SIZE):
             if batch.is_empty():
+                pbar.update(1)
                 continue
 
+            # Generate triples for this batch
             triples_iter = map_fn(batch, offset, dataset_uri)
 
             if storage is not None:
-                storage.addN((s, p, o, storage) for s, p, o in list(triples_iter))
+                # Add triples to storage
+                storage.addN((s, p, o, storage) for s, p, o in triples_iter)
             else:
-                gzip_file = gzip.open(
-                    MEDS_NT_COHORT / f"{entity}_{offset}.nt.gz", "wt", encoding="utf-8"
-                )
-                stream_to_nt(triples_iter, gzip_file)
-                gzip_file.close()
+                # Write triples to compressed NT file
+                output_file = MEDS_NT_COHORT / f"{entity}_{offset}.nt.gz"
+                with gzip.open(output_file, "wt", encoding="utf-8") as gzip_file:
+                    stream_to_nt(triples_iter, gzip_file)
 
             offset += BATCH_SIZE
             pbar.update(1)
