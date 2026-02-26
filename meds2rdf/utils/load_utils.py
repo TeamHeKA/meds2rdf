@@ -1,5 +1,6 @@
 import gzip
 import json
+import math
 from collections.abc import Iterable
 from pathlib import Path
 
@@ -52,32 +53,29 @@ def _run_with_polars(
     """
     MEDS_NT_COHORT.mkdir(exist_ok=True)
 
-    if storage is None:
-        gzip_file = gzip.open(MEDS_NT_COHORT / f"{entity}.nt.gz", "wt", encoding="utf-8")
-    else:
-        gzip_file = None
-
     offset = 0
 
-    try:
-        with tqdm(desc=f"Processing {entity}") as pbar:
-            for batch in data.collect(engine="streaming").iter_slices(n_rows=BATCH_SIZE):
-                if batch.is_empty():
-                    continue
+    total_rows = data.select(pl.len()).collect()[0, 0]
+    num_slices = math.ceil(total_rows / BATCH_SIZE)
 
-                triples_iter = map_fn(batch, offset, dataset_uri)
+    with tqdm(num_slices, desc=f"Processing {entity}", dynamic_ncols=True) as pbar:
+        for batch in data.collect(engine="streaming").iter_slices(n_rows=BATCH_SIZE):
+            if batch.is_empty():
+                continue
 
-                if storage is not None:
-                    storage.addN((s, p, o, storage) for s, p, o in list(triples_iter))
-                else:
-                    stream_to_nt(triples_iter, gzip_file)
+            triples_iter = map_fn(batch, offset, dataset_uri)
 
-                offset += BATCH_SIZE
-                pbar.update(1)
+            if storage is not None:
+                storage.addN((s, p, o, storage) for s, p, o in list(triples_iter))
+            else:
+                gzip_file = gzip.open(
+                    MEDS_NT_COHORT / f"{entity}_{offset}.nt.gz", "wt", encoding="utf-8"
+                )
+                stream_to_nt(triples_iter, gzip_file)
+                gzip_file.close()
 
-    finally:
-        if gzip_file is not None:
-            gzip_file.close()
+            offset += BATCH_SIZE
+            pbar.update(1)
 
 
 def load_and_parse_meds_table(
