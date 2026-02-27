@@ -24,7 +24,12 @@ def test_map_split_table_adds_subjectsplit_triples(tmp_path):
     splits.write_parquet(path)
 
     load_and_parse_meds_table(
-        files_path=[path], entity="Split", map_fn=map_split_df, storage=graph, provenance=None
+        files_path=[path],
+        entity="Split",
+        map_fn=map_split_df,
+        out_dir=tmp_path,
+        storage=graph,
+        provenance=None,
     )
 
     subj_uris = [
@@ -45,7 +50,12 @@ def test_map_split_table_adds_subjectsplit_triples(tmp_path):
         path = Path(tmp_path / "invalid_split.parquet")
         invalid_split.write_parquet(path)
         load_and_parse_meds_table(
-            files_path=[path], entity="Split", map_fn=map_split_df, storage=graph, provenance=None
+            files_path=[path],
+            entity="Split",
+            map_fn=map_split_df,
+            out_dir=tmp_path,
+            storage=graph,
+            provenance=None,
         )
 
     assert f"The given split name '{split_name}' is not valid" in str(excinfo.value)

@@ -3,7 +3,7 @@ from meds2rdf.converter import MedsRDFConverter
 from meds2rdf.utils.rdf_utils import run_shacl_validation
 
 
-def test_neurovasc_conversion():
+def test_neurovasc_conversion(tmp_path):
     """
     Tests that the output RDF graph from MedsRDFConverter conforms to the MEDS SHACL shapes.
     """
@@ -20,6 +20,7 @@ def test_neurovasc_conversion():
             include_codes=True,
             include_labels=False,
             include_splits=True,
+            output_dir=tmp_path,
         )
 
     if data_graph is not None:

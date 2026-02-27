@@ -13,6 +13,7 @@ from .mapping.metadata_mapper import map_dataset_metadata_df
 from .mapping.split_mapper import map_split_df
 from .namespace import MEDS, MEDS_INSTANCES
 from .utils.load_utils import (
+    MEDS_RDF_COHORT,
     load_and_parse_dataset_table,
     load_and_parse_meds_table,
     load_task_labels_files,
@@ -65,6 +66,7 @@ class MedsRDFConverter:
         include_codes: bool = False,
         include_labels: bool = False,
         include_splits: bool = False,
+        output_dir: Path = MEDS_RDF_COHORT,
     ) -> Graph | None:
         """
         Convert an entire MEDS dataset directory to RDF
@@ -80,6 +82,7 @@ class MedsRDFConverter:
             load_and_parse_dataset_table(
                 file_path=(self.meds_root / "metadata" / "dataset.json"),
                 map_fn=map_dataset_metadata_df,
+                out_dir=output_dir,
                 storage=self.graph,
                 dataset_uri=dataset_uri,
             )
@@ -88,6 +91,7 @@ class MedsRDFConverter:
         load_and_parse_meds_table(
             files_path=list((self.meds_root / "data").rglob("*.parquet")),
             entity="Event",
+            out_dir=output_dir,
             map_fn=map_event_df,
             storage=self.graph,
             provenance=dataset_uri,
@@ -98,6 +102,7 @@ class MedsRDFConverter:
             load_and_parse_meds_table(
                 files_path=[self.meds_root / "metadata" / "codes.parquet"],
                 entity="Code",
+                out_dir=output_dir,
                 map_fn=map_code_df,
                 storage=self.graph,
                 provenance=dataset_uri,
@@ -108,6 +113,7 @@ class MedsRDFConverter:
             load_and_parse_meds_table(
                 files_path=[self.meds_root / "metadata" / "subject_splits.parquet"],
                 entity="SubjectSplit",
+                out_dir=output_dir,
                 map_fn=map_split_df,
                 storage=self.graph,
             )
@@ -118,6 +124,7 @@ class MedsRDFConverter:
                 files_path=load_task_labels_files(self.meds_root / "labels"),
                 entity="Label",
                 map_fn=map_label_df,
+                out_dir=output_dir,
                 storage=self.graph,
             )
 

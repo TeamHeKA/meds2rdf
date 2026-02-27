@@ -25,7 +25,12 @@ def test_map_code_table_adds_code_triples(tmp_path):
 
     # Pass list[Path] as expected
     load_and_parse_meds_table(
-        files_path=[path], entity="Code", map_fn=map_code_df, storage=graph, provenance=None
+        files_path=[path],
+        entity="Code",
+        map_fn=map_code_df,
+        out_dir=tmp_path,
+        storage=graph,
+        provenance=None,
     )
 
     graph.print()

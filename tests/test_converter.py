@@ -180,6 +180,7 @@ def test_convert_and_validate_shacl(monkeypatch, tmp_path):
                 include_codes=True,
                 include_labels=True,
                 include_splits=True,
+                output_dir=tmp_path,
             )
 
         if data_graph is not None:

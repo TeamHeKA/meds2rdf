@@ -8,8 +8,8 @@ import polars as pl
 from rdflib import Graph, URIRef
 from tqdm import tqdm
 
-BATCH_SIZE = 512_000
-MEDS_NT_COHORT = Path("MEDS_nt_cohort")
+BATCH_SIZE = 256_000
+MEDS_RDF_COHORT = Path("MEDS_rdf_cohort")
 
 # --------------------------------------------------
 # Utilities
@@ -43,6 +43,7 @@ def _run_with_polars(
     data: pl.LazyFrame,
     map_fn,
     entity: str,
+    out_dir: Path,
     storage: Graph | None = None,
     dataset_uri: URIRef | None = None,
 ):
@@ -52,12 +53,12 @@ def _run_with_polars(
     Single gzip file.
     """
     # Ensure output directory exists
-    MEDS_NT_COHORT.mkdir(exist_ok=True)
+    out_dir.mkdir(exist_ok=True)
 
     offset = 0
 
     # Get total number of rows in a memory-efficient way
-    total_rows = data.select(pl.count()).collect()[0, 0]
+    total_rows = data.select(pl.len()).collect()[0, 0]
     num_slices = math.ceil(total_rows / BATCH_SIZE)
 
     with tqdm(total=num_slices, desc=f"Processing {entity}", dynamic_ncols=True) as pbar:
@@ -74,7 +75,7 @@ def _run_with_polars(
                 storage.addN((s, p, o, storage) for s, p, o in triples_iter)
             else:
                 # Write triples to compressed NT file
-                output_file = MEDS_NT_COHORT / f"{entity}_{offset}.nt.gz"
+                output_file = out_dir / f"{entity}_{offset}.nt.gz"
                 with gzip.open(output_file, "wt", encoding="utf-8") as gzip_file:
                     stream_to_nt(triples_iter, gzip_file)
 
@@ -86,6 +87,7 @@ def load_and_parse_meds_table(
     files_path: list[Path],
     entity: str,
     map_fn,
+    out_dir: Path,
     storage: Graph | None,
     provenance: URIRef | None = None,
 ):
@@ -98,6 +100,7 @@ def load_and_parse_meds_table(
         data=lazy_data,
         map_fn=map_fn,
         entity=entity,
+        out_dir=out_dir,
         storage=storage,
         dataset_uri=provenance,
     )
@@ -119,15 +122,16 @@ def load_task_labels_files(root: Path):
 def load_and_parse_dataset_table(
     file_path: Path,
     map_fn,
+    out_dir: Path,
     storage: Graph | None,
     dataset_uri: URIRef,
 ):
     raise_if_not_exist(file_path)
 
-    MEDS_NT_COHORT.mkdir(exist_ok=True)
+    out_dir.mkdir(exist_ok=True)
 
     if storage is None:
-        gzip_file = gzip.open(MEDS_NT_COHORT / "dataset.nt.gz", "wt", encoding="utf-8")
+        gzip_file = gzip.open(out_dir / "dataset.nt.gz", "wt", encoding="utf-8")
     else:
         gzip_file = None
 

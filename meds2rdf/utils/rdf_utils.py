@@ -105,7 +105,7 @@ def sanitize_text(s: str, mode: str = "single_line") -> str:
     if mode == "single_line":
         # Collapse all whitespace (including newlines, tabs) to single space,
         # and strip leading/trailing spaces.
-        return " ".join(s.split())
+        return " ".join(s.replace('"', "").split())
 
     if mode == "escape_newlines":
         # Preserve backslashes correctly: first escape existing backslashes,
