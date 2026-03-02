@@ -39,11 +39,11 @@ class NTriplesSink(TripleSink):
         self.gzip_mode = bool(gzip_mode)
         self._buffer: list[Triple] = []
 
-        self.path.parent.mkdir(parents=True, exist_ok=True)
+        self.path.mkdir(parents=True, exist_ok=True)
         if self.gzip_mode:
-            self._file = gzip.open(self.path, "wt", encoding="utf-8")
+            self._file = gzip.open(self.path / "data.nt.gz", "wt", encoding="utf-8")
         else:
-            self._file = open(self.path, "w", encoding="utf-8")
+            self._file = open(self.path / "data.nt", "w", encoding="utf-8")
 
     def add(self, s: URIRef, p: URIRef, o: URIRef) -> None:
         """Buffer a triple and flush if buffer is full."""
