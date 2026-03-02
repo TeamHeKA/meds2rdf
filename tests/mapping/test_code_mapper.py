@@ -1,11 +1,10 @@
-from pathlib import Path
-
 import polars as pl
 from rdflib import XSD, Graph, Literal, URIRef
 
 from meds2rdf.mapping.code_mapper import map_code_df
 from meds2rdf.namespace import MEDS, MEDS_INSTANCES
-from meds2rdf.utils.load_utils import load_and_parse_meds_table
+from meds2rdf.sinks.graph_sink import GraphSink
+from meds2rdf.utils import map_on_load
 from meds2rdf.utils.rdf_utils import curie_to_uri
 
 
@@ -20,16 +19,17 @@ def test_map_code_table_adds_code_triples(tmp_path):
         ]
     )
 
-    path = Path(tmp_path / "codes.parquet")
-    codes.write_parquet(path)
+    # path = Path(tmp_path / "codes.parquet")
+    sink = GraphSink(graph)
+    # codes.write_parquet(path)
 
     # Pass list[Path] as expected
-    load_and_parse_meds_table(
-        files_path=[path],
+    map_on_load(
+        data=codes.lazy(),
         entity="Code",
         map_fn=map_code_df,
-        out_dir=tmp_path,
-        storage=graph,
+        sink=sink,
+        batch_size=100,
         provenance=None,
     )
 

@@ -1,10 +1,5 @@
 # Optional: expose utility functions
-from .load_utils import (
-    load_and_parse_dataset_table,
-    load_and_parse_meds_table,
-    load_task_labels_files,
-    raise_if_not_exist,
-)
+from .load_utils import load_json, load_parquets, load_task_labels_files, map_on_load
 from .rdf_utils import (
     generate_code,
     generate_code_uri,
@@ -19,10 +14,10 @@ __all__ = [
     "to_subject_node",
     "run_shacl_validation",
     "generate_code",
-    "raise_if_not_exist",
+    "load_json",
+    "load_parquets",
     "load_task_labels_files",
-    "load_and_parse_meds_table",
     "generate_code_uri",
-    "load_and_parse_dataset_table",
+    "map_on_load",
     "sanitize_text",
 ]

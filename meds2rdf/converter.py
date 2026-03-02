@@ -4,146 +4,123 @@ from __future__ import annotations
 import logging
 from pathlib import Path
 
-from rdflib import Graph, URIRef
+from rdflib import URIRef
+
+from meds2rdf.config import Config, MEDSSchema
 
 from .mapping.code_mapper import map_code_df
 from .mapping.event_mapper import map_event_df
 from .mapping.label_mapper import map_label_df
 from .mapping.metadata_mapper import map_dataset_metadata_df
 from .mapping.split_mapper import map_split_df
-from .namespace import MEDS, MEDS_INSTANCES
-from .utils.load_utils import (
-    MEDS_RDF_COHORT,
-    load_and_parse_dataset_table,
-    load_and_parse_meds_table,
-    load_task_labels_files,
-)
+from .namespace import MEDS_INSTANCES
+from .sinks.base import TripleSink
+from .utils.load_utils import load_json, load_parquets, load_task_labels_files, map_on_load
 
 logger = logging.getLogger(__name__)
 
 
 class MedsRDFConverter:
-    """
-    Convert a MEDS dataset directory to rdflib.Graph,
-    with optional persistent SQLAlchemy-backed store.
+    """Stateless converter that materializes MEDS dataset content as RDF triples.
 
-    Parameters
-    ----------
-    meds_root : str | Path
-        Root folder of the MEDS dataset
+    The converter is intentionally stateless: it reads source files from
+    `meds_root`, uses mapping functions to convert rows/records into RDF triples,
+    and forwards those triples to a provided `TripleSink` (which controls
+    persistence).
+
+    Example
+    -------
+    >>> from meds2rdf.sinks.ntriples_sink import NTriplesSink
+    >>> from meds2rdf.config import Config, MEDSSchema
+    >>> sink = NTriplesSink(Path("out/events.nt.gz"), batch_size=100_000, gzip_mode=True)
+    >>> cfg = Config(schemas={MEDSSchema.DATASET_METADATA, MEDSSchema.LABELS}, batch_size=100_000)
+    >>> conv = MedsRDFConverter("/path/to/meds")
+    >>> conv.convert(sink=sink, cfg=cfg)
     """
 
-    def __init__(
-        self,
-        meds_root: str | Path,
-    ):
+    def __init__(self, meds_root: str | Path):
         self.meds_root = Path(meds_root)
-        self.graph = None
 
-    def load_in_memory(self):
-        self.graph = Graph()
-        logger.debug("Created in-memory graph")
-        self.graph.bind("meds", MEDS)
-        self.graph.bind("meds-data", MEDS_INSTANCES)
+    def convert(self, sink: TripleSink, cfg: Config) -> None:
+        """Export selected MEDS artifacts to the provided sink.
 
-    def erase(self):
-        del self.graph
+        The converter consults `cfg.schemas` to decide which parts of the
+        dataset to materialize. For each selected schema, it calls a mapping
+        function which returns an iterator of triples; those triples are sent
+        to the provided `sink`.
 
-    # Context manager support
-    def __enter__(self) -> MedsRDFConverter:
-        self.load_in_memory()
-        return self
+        Parameters
+        ----------
+        sink:
+            A `TripleSink` implementation that will persist or stream triples.
+            The caller is responsible for creating and closing the sink; the
+            converter will call `sink.close()` after export completes.
+        cfg:
+            Export configuration. Use `cfg.schemas` to control which artifacts
+            are exported and `cfg.batch_size` to control batch sizing.
 
-    def __exit__(self, exc_type, exc, tb):
-        self.erase()
-
-    # ------------------------------
-    # Top-level conversion API
-    # ------------------------------
-    def convert(
-        self,
-        include_dataset_metadata: bool = False,
-        include_codes: bool = False,
-        include_labels: bool = False,
-        include_splits: bool = False,
-        output_dir: Path = MEDS_RDF_COHORT,
-    ) -> Graph | None:
+        Raises
+        ------
+        FileNotFoundError:
+            If required source files referenced by the mapping functions are missing.
         """
-        Convert an entire MEDS dataset directory to RDF
-        """
-        dataset_uri = None
+
+        dataset_uri: URIRef | None = None
 
         # 1. Dataset metadata
-        if include_dataset_metadata:
+        if MEDSSchema.DATASET_METADATA in cfg.schemas:
             import uuid
 
             dataset_uri = URIRef(MEDS_INSTANCES[f"dataset_metadata/{uuid.uuid4()}"])
 
-            load_and_parse_dataset_table(
-                file_path=(self.meds_root / "metadata" / "dataset.json"),
+            map_on_load(
+                data=load_json(self.meds_root / "metadata" / "dataset.json"),
                 map_fn=map_dataset_metadata_df,
-                out_dir=output_dir,
-                storage=self.graph,
-                dataset_uri=dataset_uri,
+                sink=sink,
+                entity="DatasetMetdata",
+                batch_size=cfg.batch_size,
+                provenance=dataset_uri,
             )
 
-        # 2. Data tables
-        load_and_parse_meds_table(
-            files_path=list((self.meds_root / "data").rglob("*.parquet")),
+        # 2. Events
+        map_on_load(
+            data=load_parquets(list((self.meds_root / "data").rglob("*.parquet"))),
             entity="Event",
-            out_dir=output_dir,
             map_fn=map_event_df,
-            storage=self.graph,
+            sink=sink,
+            batch_size=cfg.batch_size,
             provenance=dataset_uri,
         )
 
         # 3. Codes
-        if include_codes:
-            load_and_parse_meds_table(
-                files_path=[self.meds_root / "metadata" / "codes.parquet"],
+        if MEDSSchema.CODES in cfg.schemas:
+            map_on_load(
+                data=load_parquets([self.meds_root / "metadata" / "codes.parquet"]),
                 entity="Code",
-                out_dir=output_dir,
                 map_fn=map_code_df,
-                storage=self.graph,
+                sink=sink,
+                batch_size=cfg.batch_size,
                 provenance=dataset_uri,
             )
 
-        # 4. Subject splits
-        if include_splits:
-            load_and_parse_meds_table(
-                files_path=[self.meds_root / "metadata" / "subject_splits.parquet"],
+        # 4. Splits
+        if MEDSSchema.SPLITS in cfg.schemas:
+            map_on_load(
+                data=load_parquets([self.meds_root / "metadata" / "subject_splits.parquet"]),
                 entity="SubjectSplit",
-                out_dir=output_dir,
                 map_fn=map_split_df,
-                storage=self.graph,
+                sink=sink,
+                batch_size=cfg.batch_size,
             )
 
         # 5. Labels
-        if include_labels:
-            load_and_parse_meds_table(
-                files_path=load_task_labels_files(self.meds_root / "labels"),
+        if MEDSSchema.LABELS in cfg.schemas:
+            map_on_load(
+                data=load_parquets(load_task_labels_files(self.meds_root / "labels")),
                 entity="Label",
                 map_fn=map_label_df,
-                out_dir=output_dir,
-                storage=self.graph,
+                batch_size=cfg.batch_size,
+                sink=sink,
             )
 
-        return self.graph
-
-    # ------------------------------
-    # Serialization helpers
-    # ------------------------------
-    def to_turtle(self, path: str | Path):
-        if self.graph is None:
-            raise RuntimeError("Graph is not open. Call open_store() or convert() first.")
-        self.graph.serialize(destination=str(path), format="turtle")
-
-    def to_xml(self, path: str | Path):
-        if self.graph is None:
-            raise RuntimeError("Graph is not open. Call open_store() or convert() first.")
-        self.graph.serialize(destination=str(path), format="xml")
-
-    def to_nt(self, path: str | Path):
-        if self.graph is None:
-            raise RuntimeError("Graph is not open. Call open_store() or convert() first.")
-        self.graph.serialize(destination=str(path), format="nt")
+        sink.close()

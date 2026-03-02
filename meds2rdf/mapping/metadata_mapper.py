@@ -1,6 +1,7 @@
 import uuid
 from collections.abc import Generator
 
+import polars as pl
 from rdflib import Literal, URIRef
 from rdflib.namespace import DCAT, PROV, RDF, RDFS, XSD
 from rdflib.namespace import DCTERMS as DCT
@@ -29,7 +30,8 @@ _column_list_dict = {
 
 
 def map_dataset_metadata_df(
-    shards: dict,
+    df: pl.DataFrame,
+    offset: int,
     dataset_uri: URIRef,
 ) -> Generator[tuple[URIRef, URIRef, URIRef | Literal], None, None]:
     """
@@ -38,67 +40,65 @@ def map_dataset_metadata_df(
     Fully streaming, no graph mutation; returns triples like
     map_event_df/map_label_df for consistency.
     """
+    _dict = df.to_dict()
+
     # ---- Types ----
     yield (dataset_uri, RDF.type, MEDS.DatasetMetadata)
     yield (dataset_uri, RDF.type, DCAT.Dataset)
 
     # ---- Simple literal fields ----
     for field, (prop, dtype) in _literals_dict.items():
-        if field in shards and shards[field] is not None:
-            yield (dataset_uri, prop, to_literal(shards[field], dtype))
+        if field in _dict and _dict[field][0] is not None:
+            yield (dataset_uri, prop, to_literal(_dict[field][0], dtype))
 
     # ---- Repeated literal column lists ----
     for field, (prop, dtype) in _column_list_dict.items():
-        if field in shards and shards[field]:
-            values = shards[field]
-            if not isinstance(values, list | tuple):
-                values = [values]
+        if field in _dict and _dict[field].len() > 0:
+            values = _dict[field][0].to_list()
             for v in values:
                 yield (dataset_uri, prop, to_literal(v, dtype))
 
     # ---- Dataset version ----
-    if "dataset_version" in shards and shards["dataset_version"] is not None:
-        version_uri = URIRef(f"{dataset_uri}_{shards['dataset_version']}")
+    if "dataset_version" in _dict and _dict["dataset_version"][0] is not None:
+        version_uri = URIRef(f"{dataset_uri}_{_dict['dataset_version'][0]}")
         yield (dataset_uri, DCT.hasVersion, version_uri)
 
     # ---- License ----
-    if "license" in shards and shards["license"] is not None:
+    if "license" in _dict and _dict["license"][0] is not None:
         license_uri = URIRef(MEDS_INSTANCES[f"dataset_license/{uuid.uuid4()}"])
         yield (license_uri, RDF.type, DCT.LicenseDocument)
-        yield (license_uri, RDFS.label, to_literal(shards["license"], XSD.string))
+        yield (license_uri, RDFS.label, to_literal(_dict["license"][0], XSD.string))
         yield (dataset_uri, DCT.license, license_uri)
 
     # ---- Distribution ----
-    location = shards.get("location_uri")
-    description = shards.get("description_uri")
-    if location:
+    if (location := _dict.get("location_uri")) is not None:
         dist_uri = URIRef(MEDS_INSTANCES[f"distribution/{uuid.uuid4()}"])
         yield (dist_uri, RDF.type, DCAT.Distribution)
         try:
-            yield (dist_uri, DCAT.downloadURL, URIRef(location))
+            yield (dist_uri, DCAT.downloadURL, URIRef(location[0]))
         except Exception:
-            yield (dist_uri, DCAT.downloadURL, to_literal(location, XSD.anyURI))
-        if description:
+            yield (dist_uri, DCAT.downloadURL, to_literal(location[0], XSD.anyURI))
+        if (description := _dict.get("description_uri")) is not None:
             try:
-                yield (dist_uri, DCAT.accessURL, URIRef(description))
+                yield (dist_uri, DCAT.accessURL, URIRef(description[0]))
             except Exception:
-                yield (dist_uri, DCAT.accessURL, to_literal(description, XSD.anyURI))
+                yield (dist_uri, DCAT.accessURL, to_literal(description[0], XSD.anyURI))
         yield (dataset_uri, DCAT.distribution, dist_uri)
 
     # ---- ETL activity ----
-    etl_name = shards.get("etl_name")
-    etl_version = shards.get("etl_version")
-    etl_notes = shards.get("etl_notes")
-    protocol_notes = shards.get("protocol_notes")
-    if any((etl_name, etl_version, etl_notes, protocol_notes)):
-        activity_uri = URIRef(MEDS_INSTANCES[f"etl/{uuid.uuid4()}"])
-        yield (activity_uri, RDF.type, PROV.Activity)
-        yield (dataset_uri, PROV.wasGeneratedBy, activity_uri)
-        if etl_name:
-            yield (activity_uri, RDFS.label, to_literal(etl_name, XSD.string))
-        if etl_version:
-            version_uri = URIRef(f"{activity_uri}_{etl_version}")
-            yield (activity_uri, DCT.hasVersion, version_uri)
-        notes = "\n\n".join([str(n) for n in (etl_notes, protocol_notes) if n])
-        if notes:
-            yield (activity_uri, RDFS.comment, to_literal(notes, XSD.string))
+    activity_uri = URIRef(MEDS_INSTANCES[f"etl/{uuid.uuid4()}"])
+    yield (activity_uri, RDF.type, PROV.Activity)
+    yield (dataset_uri, PROV.wasGeneratedBy, activity_uri)
+
+    if (etl_name := _dict.get("etl_name")) is not None:
+        yield (activity_uri, RDFS.label, to_literal(etl_name[0], XSD.string))
+    if (etl_version := _dict.get("etl_version")) is not None:
+        yield (activity_uri, DCT.hasVersion, URIRef(f"{activity_uri}_{etl_version[0]}"))
+
+    notes = ""
+    if (etl_notes := _dict.get("etl_notes")) is not None:
+        notes = etl_notes[0]
+    if (protocol_notes := _dict.get("protocol_notes")) is not None:
+        notes = "\n\n".join([notes, protocol_notes[0]])
+    if notes != "":
+        yield (activity_uri, RDFS.comment, to_literal(notes, XSD.string))

@@ -1,4 +1,4 @@
-<h1 align="center">MEDS2RDF</h1>
+# MEDS2RDF
 
 <p align="center">
   <img src="https://img.shields.io/github/v/release/TeamHeKA/meds2rdf" alt="Latest Release"/>
@@ -8,154 +8,167 @@
   <a href="https://doi.org/10.5281/zenodo.17953581"><img src="https://zenodo.org/badge/DOI/10.5281/zenodo.17953581.svg" alt="DOI"></a>
 </p>
 
-**Convert MEDS datasets into RDF using the MEDS Ontology**
+Convert MEDS datasets into RDF using the MEDS Ontology.
 
-[MEDS](https://medical-event-data-standard.github.io/) (Medical Event Data Standard) is a standard schema for representing longitudinal medical event data. This library, `meds2rdf`, converts MEDS-compliant datasets into RDF triples using the [MEDS Ontology](https://teamheka.github.io/meds-ontology).
+`meds2rdf` turns MEDS-compliant datasets into RDF triples (N-Triples / Turtle / RDF/XML), with a modern streaming, sink-based API that is memory-friendly and production-ready.
 
----
 
-## Features
+## What changed (short)
 
-- Convert MEDS datasets (Data, Codes, Labels, Subject Splits) into RDF.
-- Supports all MEDS value modalities: numeric, text, images, waveforms.
-- Fully links:
-  - Events to Subjects
-  - Codes to metadata
-  - Labels to prediction samples
-  - Subjects to splits
-  - Events and Codes to dataset metadata
-- Outputs RDF in Turtle, XML, or N-Triples format.
-- Optional persistent store via SQLite (requires `rdflib-sqlalchemy`).
+`meds2rdf` now provides:
 
----
+* A **Sink-based API**: producers (converter/mappers) push triples into a `TripleSink` — decouples generation from persistence.
+* A **batching high-performance sink** and a streaming **N-Triples (optionally gzipped) sink**.
+* A typed `Config` + `MEDSSchema` enum for schema selection.
 
 ## Installation
-
-Clone and install the package in editable mode:
 
 ```bash
 git clone https://github.com/TeamHeKA/meds2rdf.git
 cd meds2rdf
 pip install -e .
-````
-
-Or install directly from GitHub:
-
-```bash
-pip install git+https://github.com/TeamHeKA/meds2rdf.git
 ```
 
-If you want **persistent SQLite-backed RDF storage**, also install:
+Install dev/test deps:
 
 ```bash
-pip install rdflib-sqlalchemy
+pip install -e .[dev]
 ```
+
+## API (overview)
+
+### Key types
+
+* `meds2rdf.sinks.base.TripleSink` — abstract sink interface. Implementations: `GraphSink`, `NTriplesSink` (gz supported), `batch sinks`.
+* `meds2rdf.config.Config` — conversion configuration (which MEDS schemas to export, batch size, etc.).
+* `meds2rdf.config.MEDSSchema` — enum values: `DATASET_METADATA`, `CODES`, `LABELS`, `SPLITS`.
+* `meds2rdf.converter.MedsRDFConverter` — stateless converter; it *produces* triples and forwards them to a `TripleSink`.
+
+### New `convert` signature (breaking change vs older versions <= 1.0.1)
+
+```python
+def convert(self, sink: TripleSink, cfg: Config) -> None:
+    ...
+```
+
+`cfg` controls which MEDS schemas are exported and batch behaviour. The converter is **stateless**; the sink controls persistence.
 
 ---
 
-## Usage
+## Usage examples
 
-### In-Memory Graph (default)
+### 1) Stream to an `nt.gz` file (recommended for large exports)
 
 ```python
-from meds2rdf import MedsRDFConverter
+from pathlib import Path
+from meds2rdf.sinks.ntriples_sink import NTriplesSink
+from meds2rdf.config import Config, MEDSSchema
+from meds2rdf.converter import MedsRDFConverter
 
-# Initialize the converter (in-memory)
+# prepare sink (gzipped NT)
+sink = NTriplesSink(Path("out/meds_events.nt.gz"), batch_size=100_000, gzip_mode=True)
+
+cfg = Config(schemas={MEDSSchema.DATASET_METADATA, MEDSSchema.LABELS}, batch_size=100_000)
+
 converter = MedsRDFConverter("/path/to/meds_dataset")
+converter.convert(sink=sink, cfg=cfg)
+# sink.close() is called by convert(), but it's ok to call again to be explicit
+sink.close()
+```
 
-# Convert the dataset
+### 2) Populate an in-memory `rdflib.Graph` (useful for tests / small datasets)
+
+```python
+from rdflib import Graph
+from meds2rdf.sinks.graph_sink import GraphSink
+from meds2rdf.config import Config, MEDSSchema
+from meds2rdf.converter import MedsRDFConverter
+
+graph = Graph()
+sink = GraphSink(graph, batch_size=50_000)
+
+cfg = Config(schemas={MEDSSchema.CODES, MEDSSchema.SPLITS}, batch_size=50_000)
+
+conv = MedsRDFConverter("/path/to/meds_dataset")
+conv.convert(sink=sink, cfg=cfg)
+
+# graph now contains triples
+print(len(graph))
+```
+
+## Migration notes (old → new)
+
+Old call:
+
+```py
 converter.convert(
     include_dataset_metadata=True,
     include_codes=True,
     include_labels=True,
     include_splits=True
 )
+```
 
-# Serialize to different formats
-converter.to_turtle("output_dataset.ttl")
-converter.to_xml("output_dataset.xml")
-converter.to_nt("output_dataset.nt")
+New call:
 
-# Close resources
-converter.close()
+```py
+from meds2rdf.config import Config, MEDSSchema
+
+cfg = Config(schemas={MEDSSchema.DATASET_METADATA,
+                      MEDSSchema.CODES,
+                      MEDSSchema.LABELS,
+                      MEDSSchema.SPLITS},
+             batch_size=256_000)
+
+converter.convert(sink=my_sink, cfg=cfg)
 ```
 
 ---
 
-### Persistent SQLite Store
+## Where to hook custom storage
+
+Implement `meds2rdf.sinks.base.TripleSink`:
 
 ```python
-from meds2rdf import MedsRDFConverter
-
-# Requires `rdflib-sqlalchemy` installed
-converter = MedsRDFConverter(
-    "/path/to/meds_dataset",
-    persistent_store=True,
-)
-
-# Context manager ensures automatic cleanup
-with converter:
-    graph = converter.convert(include_labels=True)
-    converter.to_turtle("output_dataset.ttl")
+class MyCustomSink(TripleSink):
+    def add(self, s, p, o): ...
+    def add_many(self, triples): ...
+    def flush(self): ...
+    def close(self): ...
 ```
 
-## Notes
+Then pass an instance to `convert()`.
 
-* The MEDS dataset directory must follow the standard structure:
-
-  * `metadata/dataset.json`
-  * `metadata/codes.parquet` (optional)
-  * `metadata/subject_splits.parquet` (optional)
-  * `data/` folder with Parquet files
-  * `labels/` folder with label Parquet files
-
-* The `convert` method returns an `rdflib.Graph` object that can be further manipulated or serialized.
-
-* For persistent stores, the `store_path` points to **one SQLite database file** that contains the full graph. You do not need multiple files unless you want separate graphs.
+Examples shipped: `GraphSink`, `NTriplesSink` (gz supported), `batch` variations.
 
 ---
 
-## Running Tests
+## Performance tips
 
-This project uses **pytest**.
+* Use gzipped NT output for fast streaming + smaller disk footprint.
+* Tune `batch_size` depending on memory & target sink (100k–500k is a good starting point).
+* Use `GraphSink` only for small–medium datasets; very large graphs are best saved to NT files or loaded via a triplestore.
 
-### Install development dependencies
+## Tests
 
-```bash
-python -m venv .venv
-source .venv/bin/activate   # Linux/macOS
-# .venv\Scripts\activate    # Windows
-
-pip install -e .[dev]
-```
-
-Or install pytest manually:
-
-```bash
-pip install pytest
-```
-
-> Installing in **editable mode (`-e`)** is important so Python can import the `meds2rdf` package during tests.
-
-### Run the full test suite
+Run the test suite:
 
 ```bash
 pytest
 ```
 
----
+## Cite this repository
 
-## Cite this Repository
+If you use `meds2rdf` in your research, please cite it (DOI on Zenodo and releases on TeamHeKA).
 
-If you use `meds2rdf` in your research, please cite it as follows:
-
-### BibTeX
+BibTeX:
 
 ```bibtex
 @software{meds2rdf,
   title        = {meds2rdf: Converting MEDS Datasets to RDF Using the MEDS Ontology},
   author       = {{Alberto Marfoglia and Contributors}},
   year         = {2025},
-  url          = {https://doi.org/10.5281/zenodo.17953580},  note         = {Python library for converting MEDS-compliant datasets into RDF}
+  url          = {https://doi.org/10.5281/zenodo.17953580},
+  note         = {Python library for converting MEDS-compliant datasets into RDF}
 }
 ```

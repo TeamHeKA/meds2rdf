@@ -1,12 +1,11 @@
-from pathlib import Path
-
 import polars as pl
 from pytest import raises
 from rdflib import Graph, URIRef
 
 from meds2rdf.mapping.split_mapper import map_split_df
 from meds2rdf.namespace import MEDS, MEDS_INSTANCES
-from meds2rdf.utils.load_utils import load_and_parse_meds_table
+from meds2rdf.sinks.graph_sink import GraphSink
+from meds2rdf.utils import map_on_load
 
 
 def test_map_split_table_adds_subjectsplit_triples(tmp_path):
@@ -20,16 +19,15 @@ def test_map_split_table_adds_subjectsplit_triples(tmp_path):
         ]
     )
 
-    path = Path(tmp_path / "split.parquet")
-    splits.write_parquet(path)
+    sink = GraphSink(graph)
 
-    load_and_parse_meds_table(
-        files_path=[path],
+    map_on_load(
+        data=splits.lazy(),
         entity="Split",
         map_fn=map_split_df,
-        out_dir=tmp_path,
-        storage=graph,
+        sink=sink,
         provenance=None,
+        batch_size=100,
     )
 
     subj_uris = [
@@ -37,6 +35,8 @@ def test_map_split_table_adds_subjectsplit_triples(tmp_path):
         URIRef(MEDS_INSTANCES["subject/2"]),
         URIRef(MEDS_INSTANCES["subject/3"]),
     ]
+
+    sink.flush()
 
     # Basic assertions
     assert (subj_uris[0], MEDS.assignedSplit, MEDS["trainSplit"]) in graph
@@ -47,15 +47,13 @@ def test_map_split_table_adds_subjectsplit_triples(tmp_path):
     split_name = "invalid_split_name"
     with raises(ValueError) as excinfo:
         invalid_split = pl.DataFrame([{"subject_id": 1, "split": split_name}])
-        path = Path(tmp_path / "invalid_split.parquet")
-        invalid_split.write_parquet(path)
-        load_and_parse_meds_table(
-            files_path=[path],
+        map_on_load(
+            data=invalid_split.lazy(),
             entity="Split",
             map_fn=map_split_df,
-            out_dir=tmp_path,
-            storage=graph,
+            sink=sink,
             provenance=None,
+            batch_size=100,
         )
 
     assert f"The given split name '{split_name}' is not valid" in str(excinfo.value)

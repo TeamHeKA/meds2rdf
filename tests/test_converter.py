@@ -6,7 +6,9 @@ from unittest.mock import MagicMock, patch
 import polars as pl
 from rdflib import Graph
 
+from meds2rdf.config import Config, MEDSSchema
 from meds2rdf.converter import MedsRDFConverter
+from meds2rdf.sinks.graph_sink import GraphSink
 from meds2rdf.utils.rdf_utils import run_shacl_validation
 
 # You can reuse your mocks from previous tests:
@@ -172,16 +174,9 @@ def test_convert_and_validate_shacl(monkeypatch, tmp_path):
         with open(temp_dir / "dataset.json", "w", encoding="utf-8") as f:
             json.dump(mock_dataset_metadata, f, indent=4, ensure_ascii=False)
 
-        data_graph = None
-        # Context manager ensures automatic cleanup
-        with engine:
-            data_graph = engine.convert(
-                include_dataset_metadata=True,
-                include_codes=True,
-                include_labels=True,
-                include_splits=True,
-                output_dir=tmp_path,
-            )
+        data_graph = Graph()
+
+        engine.convert(sink=GraphSink(data_graph), cfg=Config(schemas=MEDSSchema.all()))
 
         if data_graph is not None:
             run_shacl_validation(data_graph, SHACL_SHAPES_URL)

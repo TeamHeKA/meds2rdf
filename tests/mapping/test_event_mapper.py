@@ -1,11 +1,10 @@
-from pathlib import Path
-
 import polars as pl
 from rdflib import XSD, Graph, Literal, URIRef
 
 from meds2rdf.mapping.event_mapper import map_event_df
 from meds2rdf.namespace import MEDS, MEDS_INSTANCES
-from meds2rdf.utils.load_utils import load_and_parse_meds_table
+from meds2rdf.sinks.graph_sink import GraphSink
+from meds2rdf.utils import map_on_load
 
 
 def test_map_data_table_adds_event_triples(tmp_path):
@@ -24,17 +23,18 @@ def test_map_data_table_adds_event_triples(tmp_path):
         ]
     )
 
-    path = Path(tmp_path / "data.parquet")
-    data.write_parquet(path)
+    # path = Path(tmp_path / "data.parquet")
+    sink = GraphSink(graph)
+    # data.write_parquet(path)
 
     # Pass list[Path] as expected
-    load_and_parse_meds_table(
-        files_path=[path],
+    map_on_load(
+        data=data.lazy(),
         entity="Event",
         map_fn=map_event_df,
-        out_dir=tmp_path,
-        storage=graph,
+        sink=sink,
         provenance=None,
+        batch_size=100,
     )
 
     subj_uri = URIRef(MEDS_INSTANCES["subject/1"])

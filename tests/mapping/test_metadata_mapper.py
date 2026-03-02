@@ -6,7 +6,8 @@ from rdflib import DCTERMS as DCT
 
 from meds2rdf.mapping.metadata_mapper import map_dataset_metadata_df
 from meds2rdf.namespace import MEDS, MEDS_INSTANCES
-from meds2rdf.utils.load_utils import load_and_parse_dataset_table
+from meds2rdf.sinks.graph_sink import GraphSink
+from meds2rdf.utils import load_json, map_on_load
 
 
 def test_map_dataset_metadata_adds_triples(tmp_path):
@@ -33,17 +34,19 @@ def test_map_dataset_metadata_adds_triples(tmp_path):
     }
 
     dataset_uri = URIRef(MEDS_INSTANCES["dataset_metadata/1"])
+    sink = GraphSink(graph)
 
     path = Path(tmp_path / "metadata.json")
     with open(path, "w", encoding="utf-8") as f:
         json.dump(metadata, f, indent=4, ensure_ascii=False)
 
-    load_and_parse_dataset_table(
-        file_path=path,
+    map_on_load(
+        data=load_json(path),
         map_fn=map_dataset_metadata_df,
-        out_dir=tmp_path,
-        storage=graph,
-        dataset_uri=dataset_uri,
+        entity="DatasetMetadata",
+        sink=sink,
+        provenance=dataset_uri,
+        batch_size=100,
     )
 
     graph.print()
