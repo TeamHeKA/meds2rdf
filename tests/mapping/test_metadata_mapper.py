@@ -51,6 +51,8 @@ def test_map_dataset_metadata_adds_triples(tmp_path):
 
     graph.print()
 
+    sink.close()
+
     # Type assertions
     assert (dataset_uri, RDF.type, MEDS.DatasetMetadata) in graph
 

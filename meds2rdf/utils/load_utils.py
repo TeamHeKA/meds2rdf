@@ -41,8 +41,6 @@ def map_on_load(
             offset += batch_size
             pbar.update(1)
 
-        sink.flush()
-
 
 def raise_if_not_exist(path: Path):
     if not path.exists():

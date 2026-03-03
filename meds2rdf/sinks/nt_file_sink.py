@@ -106,10 +106,8 @@ class NTriplesSink(TripleSink):
         if not self._file:
             raise FileExistsError("There was an error during file opening.")
 
-        write = self._file.write
-
         for s, p, o in self._buffer:
-            write(f"{s.n3()} {p.n3()} {o.n3()} .\n")
+            self._file.write(f"{s.n3()} {p.n3()} {o.n3()} .\n")
             self._triples_in_current_file += 1
 
             if self._triples_in_current_file >= self.max_triples_per_file:

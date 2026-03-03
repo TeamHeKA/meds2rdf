@@ -55,5 +55,6 @@ def test_map_split_table_adds_subjectsplit_triples(tmp_path):
             provenance=None,
             batch_size=100,
         )
+        sink.close()
 
     assert f"The given split name '{split_name}' is not valid" in str(excinfo.value)

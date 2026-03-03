@@ -35,6 +35,8 @@ def test_map_code_table_adds_code_triples(tmp_path):
 
     graph.print()
 
+    sink.close()
+
     # --- Assertions ---
     code1_uri = URIRef(MEDS_INSTANCES["code/CODE1_A"])
     code2_uri = URIRef(MEDS_INSTANCES["code/CODE2"])

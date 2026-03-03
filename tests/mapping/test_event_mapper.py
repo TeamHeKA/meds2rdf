@@ -39,6 +39,8 @@ def test_map_data_table_adds_event_triples(tmp_path):
 
     subj_uri = URIRef(MEDS_INSTANCES["subject/1"])
 
+    sink.close()
+
     # Example checks (adjust according to your mapper implementation)
     assert (MEDS_INSTANCES["event/1_0"], MEDS.hasSubject, subj_uri) in graph
     assert (

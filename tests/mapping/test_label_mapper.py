@@ -30,6 +30,8 @@ def test_map_label_table_adds_labelsample_triples(tmp_path):
         batch_size=100,
     )
 
+    sink.close()
+
     subj_uri = URIRef(MEDS_INSTANCES["subject/1"])
 
     assert (MEDS_INSTANCES["label/1_0"], None, MEDS.LabelSample) in graph
