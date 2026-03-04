@@ -89,23 +89,17 @@ def curie_to_uri(
     return URIRef(MEDS_INSTANCES[f"code/{SAFE_CHARS.sub('_', curie)}"])
 
 
-def sanitize_text(s: str, mode: str = "single_line") -> str:
+def sanitize_text(s: str, mode: str = "escape_newlines") -> str:
     """
     Sanitize a text string for safe N-Triples serialization.
 
     mode:
-      - "single_line":       replace any whitespace/newlines with single spaces (recommended)
       - "escape_newlines":   replace actual newline chars with two-char '\\n' sequences
       - "unicode_escape":    use python unicode-escape for control chars
                              (not recommended for display)
     """
     if s is None:
-        return s
-
-    if mode == "single_line":
-        # Collapse all whitespace (including newlines, tabs) to single space,
-        # and strip leading/trailing spaces.
-        return " ".join(s.replace('"', "").split())
+        raise RuntimeError("Text to sanitize can not be None")
 
     if mode == "escape_newlines":
         # Preserve backslashes correctly: first escape existing backslashes,
@@ -113,8 +107,13 @@ def sanitize_text(s: str, mode: str = "single_line") -> str:
         # This makes the literal contain the two characters '\' and 'n'.
         # Note: serializers may further escape backslashes when producing N-Triples,
         # but the result will remain one physical line.
-        return (
-            s.replace("\\", "\\\\").replace("\r\n", "\n").replace("\r", "\n").replace("\n", "\\n")
+        return " ".join(
+            s.replace("\\", "\\\\")
+            .replace("\r\n", "\n")
+            .replace("\t", "\n")
+            .replace("\r", "\n")
+            .replace('"', "")
+            .split()
         )
 
     if mode == "unicode_escape":

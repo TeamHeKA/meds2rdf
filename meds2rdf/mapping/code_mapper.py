@@ -14,6 +14,7 @@ def _map_parent_codes(value, code_cache, internal_code_uri):
     for parent_code in parent_codes:
         if parent_code:
             # Cache external codes too
+            parent_code = sanitize_text(parent_code)
             if parent_code not in code_cache:
                 code_cache[parent_code] = generate_code(
                     code_str=parent_code,
@@ -56,12 +57,13 @@ def map_code_df(
 
     # ---- Row streaming iteration ----
     for _, row in enumerate(df.iter_rows()):
-        code_uri = generate_code_uri(code_str=row[col_idx["code"]])
+        code = sanitize_text(row[col_idx["code"]])
+        code_uri = generate_code_uri(code_str=code)
 
         # ---- Optional description ----
         if has_description:
             desc = row[col_idx["description"]]
-            if desc is not None:
+            if desc is not None and desc != "":
                 yield (
                     code_uri,
                     MEDS.codeDescription,

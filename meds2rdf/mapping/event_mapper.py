@@ -81,7 +81,7 @@ def map_event_df(
 
         if has_text:
             text_val = row[col_idx["text_value"]]
-            if text_val is not None:
+            if text_val is not None and text_val != "":
                 yield (
                     event_uri,
                     MEDS.textValue,
