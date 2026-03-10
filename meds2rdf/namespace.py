@@ -8,7 +8,7 @@ PREFIX_MAP_BIOPORTAL = {
     "ICD10PCS": "http://purl.bioontology.org/ontology/ICD10PCS",
     "ICD10CM":  "http://purl.bioontology.org/ontology/ICD10CM",
     "LOINC":    "http://purl.bioontology.org/ontology/LNC",
-    "RXNORM":   "https://bioportal.bioontology.org/ontologies/RXNORM",
-    "ICD9CM":   "https://bioportal.bioontology.org/ontologies/ICD9CM",
-    "SNOMED":   "https://bioportal.bioontology.org/ontologies/SNOMED"
+    "RXNORM":   "http://purl.bioontology.org/ontology/RXNORM",
+    "ICD9CM":   "http://purl.bioontology.org/ontology/ICD9CM",
+    "SNOMED":   "http://purl.bioontology.org/ontology/SNOMED"
 }
