@@ -10,9 +10,7 @@ _split_dict = {"train": MEDS.trainSplit, "tuning": MEDS.tuningSplit, "held_out":
 
 
 def map_split_df(
-    df: pl.DataFrame,
-    offset: int,
-    dataset_uri: URIRef | None = None,
+    df: pl.DataFrame, offset: int, dataset_uri: URIRef | None = None, mode=None
 ) -> Generator[
     tuple[URIRef, URIRef, URIRef | Literal],
     None,

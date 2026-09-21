@@ -19,10 +19,13 @@ def test_map_split_table_adds_subjectsplit_triples(tmp_path):
         ]
     )
 
+    def gen_data(data):
+        yield data.lazy()
+
     sink = GraphSink(graph)
 
     map_on_load(
-        data=splits.lazy(),
+        data=gen_data(splits),
         entity="Split",
         map_fn=map_split_df,
         sink=sink,
@@ -48,7 +51,7 @@ def test_map_split_table_adds_subjectsplit_triples(tmp_path):
     with raises(ValueError) as excinfo:
         invalid_split = pl.DataFrame([{"subject_id": 1, "split": split_name}])
         map_on_load(
-            data=invalid_split.lazy(),
+            data=gen_data(invalid_split),
             entity="Split",
             map_fn=map_split_df,
             sink=sink,

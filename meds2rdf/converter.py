@@ -15,7 +15,13 @@ from .mapping.metadata_mapper import map_dataset_metadata_df
 from .mapping.split_mapper import map_split_df
 from .namespace import MEDS_INSTANCES
 from .sinks.base import TripleSink
-from .utils.load_utils import load_json, load_parquets, load_task_labels_files, map_on_load
+from .utils.load_utils import (
+    count_rows,
+    load_json,
+    load_parquets,
+    load_task_labels_files,
+    map_on_load,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -90,6 +96,8 @@ class MedsRDFConverter:
             sink=sink,
             batch_size=cfg.batch_size,
             provenance=dataset_uri,
+            total_rows=count_rows(list((self.meds_root / "data").rglob("*.parquet"))),
+            mode=cfg.semantic_mode,
         )
 
         # 3. Codes

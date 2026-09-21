@@ -21,8 +21,11 @@ def test_map_label_table_adds_labelsample_triples(tmp_path):
     sink = GraphSink(graph)
     # labels.write_parquet(path)
 
+    def gen_data(data):
+        yield data.lazy()
+
     map_on_load(
-        data=labels.lazy(),
+        data=gen_data(labels),
         entity="Label",
         map_fn=map_label_df,
         sink=sink,

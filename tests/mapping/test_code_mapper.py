@@ -23,9 +23,12 @@ def test_map_code_table_adds_code_triples(tmp_path):
     sink = GraphSink(graph)
     # codes.write_parquet(path)
 
+    def gen_data(data):
+        yield data.lazy()
+
     # Pass list[Path] as expected
     map_on_load(
-        data=codes.lazy(),
+        data=gen_data(codes),
         entity="Code",
         map_fn=map_code_df,
         sink=sink,

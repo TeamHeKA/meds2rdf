@@ -30,9 +30,7 @@ _column_list_dict = {
 
 
 def map_dataset_metadata_df(
-    df: pl.DataFrame,
-    offset: int,
-    dataset_uri: URIRef,
+    df: pl.DataFrame, offset: int, dataset_uri: URIRef, mode=None
 ) -> Generator[tuple[URIRef, URIRef, URIRef | Literal], None, None]:
     """
     Yield RDF triples for a DatasetMetadataSchema dict.

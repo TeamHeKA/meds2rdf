@@ -4,12 +4,14 @@ import polars as pl
 from rdflib import Literal, URIRef
 from rdflib.namespace import PROV, RDF, XSD
 
+from meds2rdf.config import SemanticMode
+
 from ..namespace import MEDS, MEDS_INSTANCES
-from ..utils.rdf_utils import generate_code, sanitize_text
+from ..utils.rdf_utils import generate_code, sanitize_text, to_camel_case
 
 
 def map_event_df(
-    df: pl.DataFrame, offset: int, dataset_uri: URIRef | None = None
+    df: pl.DataFrame, offset: int, dataset_uri: URIRef | None = None, mode=SemanticMode.BASE
 ) -> Generator[tuple[URIRef, URIRef, URIRef | Literal], None, None]:
     """
     Yield triples for a batch of events.
@@ -46,6 +48,33 @@ def map_event_df(
 
         yield (event_uri, RDF.type, MEDS.Event)
         yield (event_uri, MEDS.hasSubject, subject_uri)
+
+        row_index = offset + i
+        event_uri = URIRef(MEDS_INSTANCES[f"event/{sid}_{row_index}"])
+
+        yield (event_uri, RDF.type, MEDS.Event)
+
+        event_code_rel = sanitize_text(str(code_str))
+
+        match mode:
+            case SemanticMode.BASE:
+                yield (event_uri, MEDS.hasSubject, subject_uri)
+
+            case SemanticMode.PARTIAL:
+                p_code = to_camel_case(f"has_{event_code_rel.split('//')[0]}")
+                yield (
+                    subject_uri,
+                    MEDS[p_code],
+                    event_uri,
+                )
+
+            case SemanticMode.FULL:
+                p_code = to_camel_case(f"has_{event_code_rel.replace('//', '_')}")
+                yield (
+                    subject_uri,
+                    MEDS[p_code],
+                    event_uri,
+                )
 
         # ---- Code literal ----
         yield (

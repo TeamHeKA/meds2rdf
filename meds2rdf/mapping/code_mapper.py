@@ -33,9 +33,7 @@ def _map_parent_codes(value, code_cache, internal_code_uri):
 
 
 def map_code_df(
-    df: pl.DataFrame,
-    offset: int,
-    dataset_uri: URIRef | None = None,
+    df: pl.DataFrame, offset: int, dataset_uri: URIRef | None = None, mode=None
 ) -> Generator[
     tuple[URIRef, URIRef, URIRef | Literal],
     None,

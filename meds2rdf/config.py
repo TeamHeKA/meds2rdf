@@ -6,12 +6,7 @@ from enum import Enum, auto
 
 
 class MEDSSchema(Enum):
-    """Enumerates the top-level MEDS datasets (schema types) that can be exported.
-
-    Use members of this enum to indicate which parts of a MEDS dataset should
-    be materialized (for example, dataset metadata, codes/vocabulary, labels,
-    and subject splits).
-    """
+    """Enumerates the top-level MEDS datasets (schema types) that can be exported."""
 
     DATASET_METADATA = auto()
     CODES = auto()
@@ -24,6 +19,14 @@ class MEDSSchema(Enum):
         return set(cls)
 
 
+class SemanticMode(Enum):
+    """Controls how events are linked to subjects."""
+
+    BASE = auto()
+    PARTIAL = auto()
+    FULL = auto()
+
+
 @dataclass(slots=True)
 class Config:
     """Configuration for the RDF export process.
@@ -34,9 +37,11 @@ class Config:
         Set of `MEDSSchema` entries that should be exported.
     batch_size:
         Number of triples / rows that mapping functions should buffer before
-        flushing to the sink. This value is passed down to streaming helpers
-        and to Batch sinks (the pipeline may override it for particular sinks).
+        flushing to the sink.
+    mode:
+        Controls how event relationships are materialized.
     """
 
     schemas: set[MEDSSchema] = field(default_factory=set)
     batch_size: int = 256_000
+    semantic_mode: SemanticMode = SemanticMode.BASE

@@ -107,7 +107,7 @@ def sanitize_text(s: str, mode: str = "escape_newlines") -> str:
         # This makes the literal contain the two characters '\' and 'n'.
         # Note: serializers may further escape backslashes when producing N-Triples,
         # but the result will remain one physical line.
-        return " ".join(
+        s2 = " ".join(
             s.replace("\\", "\\\\")
             .replace("\r\n", "\n")
             .replace("\t", "\n")
@@ -116,8 +116,20 @@ def sanitize_text(s: str, mode: str = "escape_newlines") -> str:
             .split()
         )
 
+        unsafe_chars = r'[<>"{}|\\^`\[\]]'
+
+        s2 = re.sub(unsafe_chars, "_", s2)
+        # s2 = re.sub(r"\s+", "_", s2)
+        s2 = re.sub(r"_+", "_", s2)
+        return s2.strip("_")
+
     if mode == "unicode_escape":
         # This returns an ASCII str where control chars become \n, \t, \uXXXX etc.
         return s.encode("unicode_escape").decode("ascii")
 
     raise ValueError("unknown sanitize mode: " + repr(mode))
+
+
+def to_camel_case(s: str) -> str:
+    parts = s.replace(" ", "_").split("_")
+    return parts[0].lower() + "".join(word.capitalize() for word in parts[1:])

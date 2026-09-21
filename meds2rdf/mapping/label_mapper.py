@@ -18,9 +18,7 @@ _literals_dict = {
 
 
 def map_label_df(
-    df: pl.DataFrame,
-    offset: int,
-    dataset_uri: URIRef | None = None,
+    df: pl.DataFrame, offset: int, dataset_uri: URIRef | None = None, mode=None
 ) -> Generator[
     tuple[URIRef, URIRef, URIRef | Literal],
     None,

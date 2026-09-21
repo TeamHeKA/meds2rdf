@@ -150,6 +150,10 @@ def _fake_task_dir(name):
     return p
 
 
+def gen_data(data):
+    yield data.lazy()
+
+
 def test_convert_and_validate_shacl(monkeypatch, tmp_path):
     """
     Tests that the output RDF graph from MedsRDFConverter conforms to the MEDS SHACL shapes.
@@ -157,15 +161,23 @@ def test_convert_and_validate_shacl(monkeypatch, tmp_path):
     with (
         patch("pathlib.Path.exists", return_value=True),
         patch("pathlib.Path.iterdir") as mock_iterdir,
-        patch("polars.scan_parquet") as mock_scan,
+        # patch("polars.scan_parquet") as mock_scan,
+        patch("meds2rdf.converter.load_parquets") as mock_load_parquets,
     ):
         mock_iterdir.return_value = [_fake_task_dir("task1")]
 
-        mock_scan.side_effect = [
-            pl.DataFrame(mock_data).lazy(),  # data
-            pl.DataFrame(mock_codes).lazy(),  # codes
-            pl.DataFrame(mock_splits).lazy(),  # splits
-            pl.DataFrame(mock_labels).lazy(),  # labels
+        # mock_scan.side_effect = [
+        #     pl.DataFrame(mock_data).lazy(),  # data
+        #     pl.DataFrame(mock_codes).lazy(),  # codes
+        #     pl.DataFrame(mock_splits).lazy(),  # splits
+        #     pl.DataFrame(mock_labels).lazy(),  # labels
+        # ]
+
+        mock_load_parquets.side_effect = [
+            gen_data(pl.DataFrame(mock_data)),
+            gen_data(pl.DataFrame(mock_codes)),
+            gen_data(pl.DataFrame(mock_splits)),
+            gen_data(pl.DataFrame(mock_labels)),
         ]
 
         engine = MedsRDFConverter(tmp_path)
