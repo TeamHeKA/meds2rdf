@@ -44,4 +44,4 @@ class Config:
 
     schemas: set[MEDSSchema] = field(default_factory=set)
     batch_size: int = 256_000
-    semantic_mode: SemanticMode = SemanticMode.BASE
+    mode: SemanticMode = SemanticMode.BASE

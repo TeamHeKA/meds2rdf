@@ -97,7 +97,7 @@ class MedsRDFConverter:
             batch_size=cfg.batch_size,
             provenance=dataset_uri,
             total_rows=count_rows(list((self.meds_root / "data").rglob("*.parquet"))),
-            mode=cfg.semantic_mode,
+            mode=cfg.mode,
         )
 
         # 3. Codes
