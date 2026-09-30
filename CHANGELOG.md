@@ -2,6 +2,35 @@
 
 <!-- version list -->
 
+## v1.1.0 (2026-09-30)
+
+### Bug Fixes
+
+- Add support for multiple parent_codes [skip ci]
+  ([`f9e540f`](https://github.com/TeamHeKA/meds2rdf/commit/f9e540f0c10a19e2de6103225eb9c0988acbefc3))
+
+- Check iri validity before node generation [skip ci]
+  ([`9bde58d`](https://github.com/TeamHeKA/meds2rdf/commit/9bde58ddc6a00fe4ff8028bad50434c836531143))
+
+- Create code and subject nodes only if not exist [skip ci]
+  ([`0f7bca1`](https://github.com/TeamHeKA/meds2rdf/commit/0f7bca146725c68f8cff69554c0f3e1bc447b1cf))
+
+### Build System
+
+- Add github action for testing
+  ([`08d2765`](https://github.com/TeamHeKA/meds2rdf/commit/08d27658a816fc82730da704821b784865649b56))
+
+### Chores
+
+- Remove typo on README [skip-ci]
+  ([`c33feca`](https://github.com/TeamHeKA/meds2rdf/commit/c33feca2d3d143a73be39253dffe11c029cf487f))
+
+### Features
+
+- Integrate pyshacl within the converter [skip-ci]
+  ([`74924fa`](https://github.com/TeamHeKA/meds2rdf/commit/74924fa251aead1d5a3498ef3d5bb732da3691cd))
+
+
 ## v1.0.1 (2025-12-16)
 
 ### Bug Fixes
