@@ -1,9 +1,13 @@
-from rdflib import Graph, URIRef
-from rdflib.namespace import RDF, RDFS, XSD, DCTERMS as DCT, PROV, DCAT
 import uuid
+from collections.abc import Generator
+
+import polars as pl
+from rdflib import Literal, URIRef
+from rdflib.namespace import DCAT, PROV, RDF, RDFS, XSD
+from rdflib.namespace import DCTERMS as DCT
 
 from ..namespace import MEDS, MEDS_INSTANCES
-from ..utils.rdf_utils import if_column_is_present, to_literal
+from ..utils.rdf_utils import to_literal
 
 # Mapping for simple literal properties (dataset-level)
 # NOTE: ETL fields are handled separately (as a prov:Activity)
@@ -25,122 +29,74 @@ _column_list_dict = {
 }
 
 
-def _add_distribution_for_dataset(g: Graph, dataset_uri: URIRef, shards: dict) -> URIRef | None:
+def map_dataset_metadata_df(
+    df: pl.DataFrame, offset: int, dataset_uri: URIRef, mode=None
+) -> Generator[tuple[URIRef, URIRef, URIRef | Literal], None, None]:
     """
-    If location_uri is present in shards, create a dcat:Distribution node,
-    attach dcat:downloadURL (and optional dcat:accessURL), and link it to the dataset.
-    Returns the distribution URI or None if not created.
+    Yield RDF triples for a DatasetMetadataSchema dict.
+
+    Fully streaming, no graph mutation; returns triples like
+    map_event_df/map_label_df for consistency.
     """
-    location = shards.get("location_uri")
-    description = shards.get("description_uri")
+    _dict = df.to_dict()
 
-    if not location:
-        return None
+    # ---- Types ----
+    yield (dataset_uri, RDF.type, MEDS.DatasetMetadata)
+    yield (dataset_uri, RDF.type, DCAT.Dataset)
 
-    dist_uri = URIRef(MEDS_INSTANCES[f"distribution/{uuid.uuid4()}"])
-    g.add((dist_uri, RDF.type, DCAT.Distribution))
-    # downloadURL should be an IRI (URIRef)
-    try:
-        g.add((dist_uri, DCAT.downloadURL, URIRef(location)))
-    except Exception:
-        # fallback to literal if the helper expects that (safe fallback)
-        g.add((dist_uri, DCAT.downloadURL, to_literal(location, XSD.anyURI)))
-
-    if description:
-        try:
-            g.add((dist_uri, DCAT.accessURL, URIRef(description)))
-        except Exception:
-            g.add((dist_uri, DCAT.accessURL, to_literal(description, XSD.anyURI)))
-
-    # link dataset -> distribution
-    g.add((dataset_uri, DCAT.distribution, dist_uri))
-    return dist_uri
-
-
-def _add_etl_activity_if_present(g: Graph, dataset_uri: URIRef, shards: dict) -> URIRef | None:
-    """
-    If any ETL-related fields are present (etl_name, etl_version, etl_notes, protocol_notes),
-    create a prov:Activity node and attach relevant literals using standard properties:
-      - rdfs:label for etl_name
-      - dct:hasVersion for etl_version
-      - rdfs:comment for etl_notes / protocol_notes (concatenated if both)
-    Link the dataset via prov:wasGeneratedBy -> activity.
-    Returns the activity URI or None if nothing was created.
-    """
-    etl_name = shards.get("etl_name")
-    etl_version = shards.get("etl_version")
-    etl_notes = shards.get("etl_notes")
-    protocol_notes = shards.get("protocol_notes")
-
-    if not any((etl_name, etl_version, etl_notes, protocol_notes)):
-        return None
-
-    activity_uri = URIRef(MEDS_INSTANCES[f"etl/{uuid.uuid4()}"])
-    g.add((activity_uri, RDF.type, PROV.Activity))
-    g.add((dataset_uri, PROV.wasGeneratedBy, activity_uri))
-
-    if_column_is_present("etl_name", shards, lambda v:  g.add((activity_uri, RDFS.label, to_literal(v, XSD.string))))
-    if_column_is_present("etl_version", shards, lambda v: _add_version_node(g, activity_uri, version=v))
-
-    # combine notes if both are present
-    notes_parts = []
-    if etl_notes:
-        notes_parts.append(str(etl_notes))
-    if protocol_notes:
-        notes_parts.append(str(protocol_notes))
-    if notes_parts:
-        combined = "\n\n".join(notes_parts)
-        g.add((activity_uri, RDFS.comment, to_literal(combined, XSD.string)))
-
-    return activity_uri
-
-
-def _add_version_node(g: Graph, resource_uri: URIRef, version: str):
-    return g.add((resource_uri, DCT.hasVersion, URIRef(f"{resource_uri}_{version}")))
-
-def _add_license_node(g: Graph, dataset_uri: URIRef, license_text: str):
-    license_uri = MEDS_INSTANCES[f"dataset_license/{uuid.uuid4()}"]
-    g.add((license_uri, RDF.type, DCT.LicenseDocument))
-    g.add((license_uri, RDFS.label, to_literal(license_text, XSD.string)))
-    g.add((dataset_uri, DCT.license, license_uri))
-    return g
-
-def map_dataset_metadata(g: Graph, shards: dict) -> URIRef:
-    """
-    Map a DatasetMetadataSchema JSON-like dict into an RDF individual of type MEDS:DatasetMetadata
-    (and also typed as dcat:Dataset for catalog compatibility).
-
-    Parameters
-    ----------
-    g : rdflib.Graph
-        The RDF graph where triples will be added.
-    shards : dict
-        Dictionary following DatasetMetadataSchema (all fields optional).
-
-    Returns
-    -------
-    URIRef
-        The URI of the created DatasetMetadata individual.
-    """
-    dataset_uri = URIRef(MEDS_INSTANCES[f"dataset_metadata/{uuid.uuid4()}"])
-    # Type as MEDS DatasetMetadata and DCAT Dataset (for interoperability)
-    g.add((dataset_uri, RDF.type, MEDS.DatasetMetadata))
-
-    # simple literal mappings
+    # ---- Simple literal fields ----
     for field, (prop, dtype) in _literals_dict.items():
-        if_column_is_present(field, shards, lambda v: g.add((dataset_uri, prop, to_literal(v, dtype))))
+        if field in _dict and _dict[field][0] is not None:
+            yield (dataset_uri, prop, to_literal(_dict[field][0], dtype))
 
-    # repeated-literal MEDS column lists
+    # ---- Repeated literal column lists ----
     for field, (prop, dtype) in _column_list_dict.items():
-        if_column_is_present(field, shards, lambda v: g.add((dataset_uri, prop, to_literal(v, dtype))))
+        if field in _dict and _dict[field].len() > 0:
+            values = _dict[field][0].to_list()
+            for v in values:
+                yield (dataset_uri, prop, to_literal(v, dtype))
 
-    if_column_is_present("dataset_version", shards, lambda v: _add_version_node(g, dataset_uri, version=v))
-    if_column_is_present("license", shards, lambda v: _add_license_node(g, dataset_uri, license_text=v))
+    # ---- Dataset version ----
+    if "dataset_version" in _dict and _dict["dataset_version"][0] is not None:
+        version_uri = URIRef(f"{dataset_uri}_{_dict['dataset_version'][0]}")
+        yield (dataset_uri, DCT.hasVersion, version_uri)
 
-    # Distribution (location_uri + optional description_uri)
-    _add_distribution_for_dataset(g, dataset_uri, shards)
+    # ---- License ----
+    if "license" in _dict and _dict["license"][0] is not None:
+        license_uri = URIRef(MEDS_INSTANCES[f"dataset_license/{uuid.uuid4()}"])
+        yield (license_uri, RDF.type, DCT.LicenseDocument)
+        yield (license_uri, RDFS.label, to_literal(_dict["license"][0], XSD.string))
+        yield (dataset_uri, DCT.license, license_uri)
 
-    # ETL provenance recorded as a prov:Activity (if any ETL info provided)
-    _add_etl_activity_if_present(g, dataset_uri, shards)
+    # ---- Distribution ----
+    if (location := _dict.get("location_uri")) is not None:
+        dist_uri = URIRef(MEDS_INSTANCES[f"distribution/{uuid.uuid4()}"])
+        yield (dist_uri, RDF.type, DCAT.Distribution)
+        try:
+            yield (dist_uri, DCAT.downloadURL, URIRef(location[0]))
+        except Exception:
+            yield (dist_uri, DCAT.downloadURL, to_literal(location[0], XSD.anyURI))
+        if (description := _dict.get("description_uri")) is not None:
+            try:
+                yield (dist_uri, DCAT.accessURL, URIRef(description[0]))
+            except Exception:
+                yield (dist_uri, DCAT.accessURL, to_literal(description[0], XSD.anyURI))
+        yield (dataset_uri, DCAT.distribution, dist_uri)
 
-    return dataset_uri
+    # ---- ETL activity ----
+    activity_uri = URIRef(MEDS_INSTANCES[f"etl/{uuid.uuid4()}"])
+    yield (activity_uri, RDF.type, PROV.Activity)
+    yield (dataset_uri, PROV.wasGeneratedBy, activity_uri)
+
+    if (etl_name := _dict.get("etl_name")) is not None:
+        yield (activity_uri, RDFS.label, to_literal(etl_name[0], XSD.string))
+    if (etl_version := _dict.get("etl_version")) is not None:
+        yield (activity_uri, DCT.hasVersion, URIRef(f"{activity_uri}_{etl_version[0]}"))
+
+    notes = ""
+    if (etl_notes := _dict.get("etl_notes")) is not None:
+        notes = etl_notes[0]
+    if (protocol_notes := _dict.get("protocol_notes")) is not None:
+        notes = "\n\n".join([notes, protocol_notes[0]])
+    if notes != "":
+        yield (activity_uri, RDFS.comment, to_literal(notes, XSD.string))

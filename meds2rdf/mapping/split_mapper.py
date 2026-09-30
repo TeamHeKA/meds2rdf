@@ -1,61 +1,50 @@
-from rdflib import RDF, Graph, Literal, URIRef
-from typing import Iterable
-from ..namespace import MEDS
-from ..utils.rdf_utils import node_exist, try_access_mandatory_field_value, to_subject_node
+from collections.abc import Generator
 
-_split_dict = {
-    "train": MEDS.trainSplit,
-    "tuning": MEDS.tuningSplit,
-    "held_out": MEDS.heldOutSplit
-}
+import polars as pl
+from rdflib import PROV, RDF, Literal, URIRef
 
-def map_split(g: Graph, row: dict) -> URIRef:
+from ..namespace import MEDS, MEDS_INSTANCES
+
+# Map split names to RDF predicates
+_split_dict = {"train": MEDS.trainSplit, "tuning": MEDS.tuningSplit, "held_out": MEDS.heldOutSplit}
+
+
+def map_split_df(
+    df: pl.DataFrame, offset: int, dataset_uri: URIRef | None = None, mode=None
+) -> Generator[
+    tuple[URIRef, URIRef, URIRef | Literal],
+    None,
+    None,
+]:
     """
-    Map a single row of a MEDS SubjectSplitSchema into a SubjectSplit RDF individual.
+    Yield RDF triples for:
+    1. Global SubjectSplit definitions (train/tuning/held_out)
+    2. Subject assignments to splits from the DataFrame
 
-    Parameters
-    ----------
-    g : Graph
-        RDF graph to populate
-    row : dict
-        Dictionary representing a single split
-
-    Returns
-    -------
-    URIRef
-        URI of the created SubjectSplit individual
+    This is fully streaming and suitable for large datasets.
     """
 
-    subject_id = try_access_mandatory_field_value(row=row, field="subject_id", entity="SubjectSplit")
-    assigned_split = try_access_mandatory_field_value(row=row, field="split", entity="SubjectSplit")
+    # ---- Emit global split definitions once ----
+    for split_name, split_uri in _split_dict.items():
+        yield (split_uri, RDF.type, MEDS.SubjectSplit)
+        yield (split_uri, MEDS.splitName, Literal(split_name))
 
-    if (split_uri := _split_dict.get(assigned_split)) is None:
-        raise ValueError(f"The given split name '{assigned_split}' is not valid")
+    # ---- Precompute column indices ----
+    col_idx = {name: i for i, name in enumerate(df.columns)}
 
-    if node_exist(g, node=split_uri) is False:
-        g.add((split_uri, RDF.type, MEDS.SubjectSplit))
-        g.add((split_uri, MEDS.splitName, Literal(assigned_split)))
-        
-    g.add((to_subject_node(subject_id), MEDS.assignedSplit, split_uri))
-    return split_uri
+    # ---- Stream DataFrame rows ----
+    for _, row in enumerate(df.iter_rows()):
+        subject_id = row[col_idx["subject_id"]]
+        assigned_split = row[col_idx["split"]]
 
-def map_split_table(g: Graph, data: Iterable[dict]) -> list[URIRef]:
-    """
-    Map an iterable of MEDS SubjectSplitSchema rows to RDF Code individuals.
+        if (split_uri := _split_dict.get(assigned_split)) is None:
+            raise ValueError(f"The given split name '{assigned_split}' is not valid")
 
-    Parameters
-    ----------
-    g : Graph
-        RDF graph to populate
-    data : Iterable[dict]
-        List of rows/dicts representing the MEDS SubjectSplitSchema
-    Returns
-    -------
-    list[URIRef]
-        List of URIs of the created SubjectSplit individuals
-    """
-    uris = []
-    for row in data:
-        split_uri = map_split(g, row)
-        uris.append(split_uri)
-    return uris
+        subject_uri = URIRef(MEDS_INSTANCES[f"subject/{subject_id}"])
+
+        # ---- Assign split to subject ----
+        yield (subject_uri, MEDS.assignedSplit, split_uri)
+
+        # ---- Optional provenance ----
+        if dataset_uri is not None:
+            yield (subject_uri, PROV.wasDerivedFrom, dataset_uri)

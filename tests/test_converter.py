@@ -1,6 +1,15 @@
 # tests/test_shacl_validation.py
+import json
+from pathlib import Path
+from unittest.mock import MagicMock, patch
+
+import polars as pl
 from rdflib import Graph
+
+from meds2rdf.config import Config, MEDSSchema
 from meds2rdf.converter import MedsRDFConverter
+from meds2rdf.sinks.graph_sink import GraphSink
+from meds2rdf.utils.rdf_utils import run_shacl_validation
 
 # You can reuse your mocks from previous tests:
 mock_dataset_metadata = {
@@ -30,7 +39,6 @@ mock_data = [
         "text_value": "F",
         "numeric_value": None,
     },
-
     # Subject 1 — age
     {
         "subject_id": 11111111,
@@ -39,29 +47,26 @@ mock_data = [
         "numeric_value": 45,
         "text_value": None,
     },
-
     # Subject 1 — lab event with unit modifier
     {
-        "subject_id": 11111111,
+        "subject_id": 22222222,
         "time": "2025-01-01T05:30:00",
         "code": "LAB//GLUCOSE",
         "numeric_value": 120.5,
         "text_value": None,
     },
-
     # Subject 1 — event with image value modality
     {
-        "subject_id": 11111111,
+        "subject_id": 33333333,
         "time": "2025-01-02T12:30:05",
         "code": "RADIOLOGY//CHEST_XRAY",
         "numeric_value": None,
         "text_value": None,
-        "image_path": "/images/xray_11111111_0001.png"
+        "image_path": "/images/xray_11111111_0001.png",
     },
-
     # Subject 2 — minimal data
     {
-        "subject_id": 22222222,
+        "subject_id": 44444444,
         "time": "2025-01-03T00:00:00",
         "code": "DEMOGRAPHICS//AGE",
         "numeric_value": 60,
@@ -73,43 +78,31 @@ mock_codes = [
     {
         "code": "DEMOGRAPHICS//GENDER",
         "description": "Administrative sex of patient",
-        "parent_codes": ["ICD10:AAAA"]
+        "parent_codes": ["ICD10:AAAA"],
     },
-    {
-        "code": "DEMOGRAPHICS//AGE",
-        "description": "Age in years",
-        "parent_codes": ["ICD10:AAAA"]
-    },
+    {"code": "DEMOGRAPHICS//AGE", "description": "Age in years", "parent_codes": ["ICD10:AAAA"]},
     {
         "code": "LAB//GLUCOSE",
         "description": "Blood glucose level",
-        "parent_codes": ["ICD10:AAAA", "ICD10:BBB"]
+        "parent_codes": ["ICD10:AAAA", "ICD10:BBB"],
     },
     {
         "code": "RADIOLOGY//CHEST_XRAY",
         "description": "AP/PA Chest X-ray",
-        "parent_codes": ["ICD10:AAAA"]
+        "parent_codes": ["ICD10:AAAA"],
     },
     {
         "code": "DEMOGRAPHICS//ROOT",
         "description": "Demographic information root",
-        "parent_codes": []
+        "parent_codes": [],
     },
     {
         "code": "LAB//CHEMISTRY",
         "description": "Chemistry lab panel",
-        "parent_codes": ["ICD10:AAAA"]
+        "parent_codes": ["ICD10:AAAA"],
     },
-    {
-        "code": "LAB//ROOT",
-        "description": "Laboratory results root",
-        "parent_codes": []
-    },
-    {
-        "code": "RADIOLOGY//ROOT",
-        "description": "Radiology studies root",
-        "parent_codes": []
-    }
+    {"code": "LAB//ROOT", "description": "Laboratory results root", "parent_codes": []},
+    {"code": "RADIOLOGY//ROOT", "description": "Radiology studies root", "parent_codes": []},
 ]
 
 mock_splits = [
@@ -122,28 +115,16 @@ mock_splits = [
 
 mock_labels = [
     # boolean label
-    {
-        "subject_id": 11111111,
-        "prediction_time": "2025-01-02T00:00:00",
-        "boolean_value": True
-    },
+    {"subject_id": 11111111, "prediction_time": "2025-01-02T00:00:00", "boolean_value": True},
     # integer label
-    {
-        "subject_id": 11111111,
-        "prediction_time": "2025-01-02T00:00:00",
-        "integer_value": 3
-    },
+    {"subject_id": 11111111, "prediction_time": "2025-01-02T00:00:00", "integer_value": 3},
     # float label
-    {
-        "subject_id": 22222222,
-        "prediction_time": "2025-01-03T05:00:00",
-        "float_value": 12.7
-    },
+    {"subject_id": 22222222, "prediction_time": "2025-01-03T05:00:00", "float_value": 12.7},
     # categorical label
     {
         "subject_id": 33333333,
         "prediction_time": "2025-01-04T10:00:00",
-        "categorical_value": "SEVERE"
+        "categorical_value": "SEVERE",
     },
 ]
 
@@ -151,35 +132,66 @@ mock_labels = [
 SHACL_SHAPES_URL = "https://raw.githubusercontent.com/TeamHeKA/meds-ontology/refs/tags/v1.0.2/shacl/meds-shapes.ttl"
 
 
-def test_convert_and_validate_shacl(monkeypatch):
+def fake_task_dir(name: str):
+    task = MagicMock(spec=Path)
+    task.is_dir.return_value = True
+    task.name = name
+    task.rglob.return_value = [Path("dummy/path/labels/task1/train/file.parquet")]
+
+    return task
+
+
+def _fake_task_dir(name):
+    p = MagicMock(spec=Path)
+    p.is_dir.return_value = True
+    p.name = name
+    p.iterdir.return_value = []  # no splits inside for now
+    p.rglob.return_value = []  # no parquet files
+    return p
+
+
+def gen_data(data):
+    yield data.lazy()
+
+
+def test_convert_and_validate_shacl(monkeypatch, tmp_path):
     """
     Tests that the output RDF graph from MedsRDFConverter conforms to the MEDS SHACL shapes.
     """
+    with (
+        patch("pathlib.Path.exists", return_value=True),
+        patch("pathlib.Path.iterdir") as mock_iterdir,
+        # patch("polars.scan_parquet") as mock_scan,
+        patch("meds2rdf.converter.load_parquets") as mock_load_parquets,
+    ):
+        mock_iterdir.return_value = [_fake_task_dir("task1")]
 
-    # -- 1. Mock out filesystem + read_parquet just like in your previous test
-    import json
-    from unittest.mock import MagicMock, mock_open, patch
+        # mock_scan.side_effect = [
+        #     pl.DataFrame(mock_data).lazy(),  # data
+        #     pl.DataFrame(mock_codes).lazy(),  # codes
+        #     pl.DataFrame(mock_splits).lazy(),  # splits
+        #     pl.DataFrame(mock_labels).lazy(),  # labels
+        # ]
 
-    with patch("builtins.open", mock_open(read_data=json.dumps(mock_dataset_metadata))), \
-         patch("pathlib.Path.exists", return_value=True), \
-         patch("polars.read_parquet") as mock_pl_read:
-
-        # Make Polars return our mock objects
-        mock_pl_read.side_effect = [
-            MagicMock(to_dicts=lambda: mock_data),    # data/**/*.parquet
-            MagicMock(to_dicts=lambda: mock_codes),   # codes
-            MagicMock(to_dicts=lambda: mock_splits),  # splits
-            MagicMock(to_dicts=lambda: mock_labels),  # labels
+        mock_load_parquets.side_effect = [
+            gen_data(pl.DataFrame(mock_data)),
+            gen_data(pl.DataFrame(mock_codes)),
+            gen_data(pl.DataFrame(mock_splits)),
+            gen_data(pl.DataFrame(mock_labels)),
         ]
 
-        converter = MedsRDFConverter("dummy/path")
-        data_graph = converter.convert(
-            include_dataset_metadata=True,
-            include_codes=True,
-            include_labels=True,
-            include_splits=True,
-            shacl_path=SHACL_SHAPES_URL
-        )
+        engine = MedsRDFConverter(tmp_path)
+        temp_dir = tmp_path / "metadata"
+        temp_dir.mkdir()
+        with open(temp_dir / "dataset.json", "w", encoding="utf-8") as f:
+            json.dump(mock_dataset_metadata, f, indent=4, ensure_ascii=False)
+
+        data_graph = Graph()
+
+        engine.convert(sink=GraphSink(data_graph), cfg=Config(schemas=MEDSSchema.all()))
+
+        if data_graph is not None:
+            run_shacl_validation(data_graph, SHACL_SHAPES_URL)
 
     # Sanity check — we *have* an rdflib.Graph
     assert isinstance(data_graph, Graph)
