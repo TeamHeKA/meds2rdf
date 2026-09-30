@@ -2,6 +2,127 @@
 
 <!-- version list -->
 
+## v2.0.0 (2026-09-30)
+
+### Bug Fixes
+
+- Include core classes on _init_ ([#2](https://github.com/TeamHeKA/meds2rdf/pull/2),
+  [`d17afc6`](https://github.com/TeamHeKA/meds2rdf/commit/d17afc6599e03d3ecd730753c2dda573dde4a442))
+
+- Open output file just once [skip ci] ([#2](https://github.com/TeamHeKA/meds2rdf/pull/2),
+  [`d17afc6`](https://github.com/TeamHeKA/meds2rdf/commit/d17afc6599e03d3ecd730753c2dda573dde4a442))
+
+- Remove inmemory on convert [skip ci] ([#2](https://github.com/TeamHeKA/meds2rdf/pull/2),
+  [`d17afc6`](https://github.com/TeamHeKA/meds2rdf/commit/d17afc6599e03d3ecd730753c2dda573dde4a442))
+
+- Remove typo [skip ci] ([#2](https://github.com/TeamHeKA/meds2rdf/pull/2),
+  [`d17afc6`](https://github.com/TeamHeKA/meds2rdf/commit/d17afc6599e03d3ecd730753c2dda573dde4a442))
+
+- Sanitaze codes and remove empty descriptions ([#2](https://github.com/TeamHeKA/meds2rdf/pull/2),
+  [`d17afc6`](https://github.com/TeamHeKA/meds2rdf/commit/d17afc6599e03d3ecd730753c2dda573dde4a442))
+
+- Sanitize text on literal before serializing ([#2](https://github.com/TeamHeKA/meds2rdf/pull/2),
+  [`d17afc6`](https://github.com/TeamHeKA/meds2rdf/commit/d17afc6599e03d3ecd730753c2dda573dde4a442))
+
+- Set right file extension on file_sink ([#2](https://github.com/TeamHeKA/meds2rdf/pull/2),
+  [`d17afc6`](https://github.com/TeamHeKA/meds2rdf/commit/d17afc6599e03d3ecd730753c2dda573dde4a442))
+
+- Sink nt wrote on closing file ([#2](https://github.com/TeamHeKA/meds2rdf/pull/2),
+  [`d17afc6`](https://github.com/TeamHeKA/meds2rdf/commit/d17afc6599e03d3ecd730753c2dda573dde4a442))
+
+### Build System
+
+- Set rdflib-sqlalchemy version ([#2](https://github.com/TeamHeKA/meds2rdf/pull/2),
+  [`d17afc6`](https://github.com/TeamHeKA/meds2rdf/commit/d17afc6599e03d3ecd730753c2dda573dde4a442))
+
+### Chores
+
+- Align namespaces ([#2](https://github.com/TeamHeKA/meds2rdf/pull/2),
+  [`d17afc6`](https://github.com/TeamHeKA/meds2rdf/commit/d17afc6599e03d3ecd730753c2dda573dde4a442))
+
+- Mprove loading bar ([#2](https://github.com/TeamHeKA/meds2rdf/pull/2),
+  [`d17afc6`](https://github.com/TeamHeKA/meds2rdf/commit/d17afc6599e03d3ecd730753c2dda573dde4a442))
+
+- Trigger release
+  ([`2f258f0`](https://github.com/TeamHeKA/meds2rdf/commit/2f258f0434a3e9abc266f3f534cbbbf2749dca1d))
+
+### Code Style
+
+- Add linter and formater [skip ci] ([#2](https://github.com/TeamHeKA/meds2rdf/pull/2),
+  [`d17afc6`](https://github.com/TeamHeKA/meds2rdf/commit/d17afc6599e03d3ecd730753c2dda573dde4a442))
+
+### Features
+
+- Add parallization in events mapper ([#2](https://github.com/TeamHeKA/meds2rdf/pull/2),
+  [`d17afc6`](https://github.com/TeamHeKA/meds2rdf/commit/d17afc6599e03d3ecd730753c2dda573dde4a442))
+
+- Add persistent storage ([#2](https://github.com/TeamHeKA/meds2rdf/pull/2),
+  [`d17afc6`](https://github.com/TeamHeKA/meds2rdf/commit/d17afc6599e03d3ecd730753c2dda573dde4a442))
+
+- Add persistent storage for the Graph ([#2](https://github.com/TeamHeKA/meds2rdf/pull/2),
+  [`d17afc6`](https://github.com/TeamHeKA/meds2rdf/commit/d17afc6599e03d3ecd730753c2dda573dde4a442))
+
+- Add semantic mode ([#2](https://github.com/TeamHeKA/meds2rdf/pull/2),
+  [`d17afc6`](https://github.com/TeamHeKA/meds2rdf/commit/d17afc6599e03d3ecd730753c2dda573dde4a442))
+
+- Introduce typed config and semantic modes for scalable graph learning
+  ([#2](https://github.com/TeamHeKA/meds2rdf/pull/2),
+  [`d17afc6`](https://github.com/TeamHeKA/meds2rdf/commit/d17afc6599e03d3ecd730753c2dda573dde4a442))
+
+- Multiple file split on gzip saving ([#2](https://github.com/TeamHeKA/meds2rdf/pull/2),
+  [`d17afc6`](https://github.com/TeamHeKA/meds2rdf/commit/d17afc6599e03d3ecd730753c2dda573dde4a442))
+
+### Refactoring
+
+- Change API following strategy pattern ([#2](https://github.com/TeamHeKA/meds2rdf/pull/2),
+  [`d17afc6`](https://github.com/TeamHeKA/meds2rdf/commit/d17afc6599e03d3ecd730753c2dda573dde4a442))
+
+- Exclude writing on in-memory graph [skip ci] ([#2](https://github.com/TeamHeKA/meds2rdf/pull/2),
+  [`d17afc6`](https://github.com/TeamHeKA/meds2rdf/commit/d17afc6599e03d3ecd730753c2dda573dde4a442))
+
+- Expose semantic mode variable ([#2](https://github.com/TeamHeKA/meds2rdf/pull/2),
+  [`d17afc6`](https://github.com/TeamHeKA/meds2rdf/commit/d17afc6599e03d3ecd730753c2dda573dde4a442))
+
+- Improve code, event, split mappers removing dicts
+  ([#2](https://github.com/TeamHeKA/meds2rdf/pull/2),
+  [`d17afc6`](https://github.com/TeamHeKA/meds2rdf/commit/d17afc6599e03d3ecd730753c2dda573dde4a442))
+
+- Make codes, splits, labels parallels ([#2](https://github.com/TeamHeKA/meds2rdf/pull/2),
+  [`d17afc6`](https://github.com/TeamHeKA/meds2rdf/commit/d17afc6599e03d3ecd730753c2dda573dde4a442))
+
+- Pass file name from outside of sink ([#2](https://github.com/TeamHeKA/meds2rdf/pull/2),
+  [`d17afc6`](https://github.com/TeamHeKA/meds2rdf/commit/d17afc6599e03d3ecd730753c2dda573dde4a442))
+
+- Pass output dir from function and skip " in string
+  ([#2](https://github.com/TeamHeKA/meds2rdf/pull/2),
+  [`d17afc6`](https://github.com/TeamHeKA/meds2rdf/commit/d17afc6599e03d3ecd730753c2dda573dde4a442))
+
+- Remove sqlite [skip ci] ([#2](https://github.com/TeamHeKA/meds2rdf/pull/2),
+  [`d17afc6`](https://github.com/TeamHeKA/meds2rdf/commit/d17afc6599e03d3ecd730753c2dda573dde4a442))
+
+- Remove unuseful functions ([#2](https://github.com/TeamHeKA/meds2rdf/pull/2),
+  [`d17afc6`](https://github.com/TeamHeKA/meds2rdf/commit/d17afc6599e03d3ecd730753c2dda573dde4a442))
+
+- Replace dicts with parquets ([#2](https://github.com/TeamHeKA/meds2rdf/pull/2),
+  [`d17afc6`](https://github.com/TeamHeKA/meds2rdf/commit/d17afc6599e03d3ecd730753c2dda573dde4a442))
+
+- Split converted triples in files ([#2](https://github.com/TeamHeKA/meds2rdf/pull/2),
+  [`d17afc6`](https://github.com/TeamHeKA/meds2rdf/commit/d17afc6599e03d3ecd730753c2dda573dde4a442))
+
+- Use polars dataframe on events mapping [skip ci]
+  ([#2](https://github.com/TeamHeKA/meds2rdf/pull/2),
+  [`d17afc6`](https://github.com/TeamHeKA/meds2rdf/commit/d17afc6599e03d3ecd730753c2dda573dde4a442))
+
+- Use streams also for code, labels and splits [skip ci]
+  ([#2](https://github.com/TeamHeKA/meds2rdf/pull/2),
+  [`d17afc6`](https://github.com/TeamHeKA/meds2rdf/commit/d17afc6599e03d3ecd730753c2dda573dde4a442))
+
+### Testing
+
+- Disable neurovasc test on github action ([#2](https://github.com/TeamHeKA/meds2rdf/pull/2),
+  [`d17afc6`](https://github.com/TeamHeKA/meds2rdf/commit/d17afc6599e03d3ecd730753c2dda573dde4a442))
+
+
 ## v1.1.0 (2026-09-30)
 
 ### Bug Fixes
