@@ -5,9 +5,29 @@ import gzip
 from collections.abc import Iterable
 from pathlib import Path
 
-from rdflib import URIRef
+from rdflib import Literal, URIRef
 
 from meds2rdf.sinks.base import Triple, TripleSink
+
+# ECHAR escapes required inside an N-Triples STRING_LITERAL_QUOTE
+_NT_ESCAPES = str.maketrans({"\\": "\\\\", '"': '\\"', "\n": "\\n", "\r": "\\r"})
+
+
+def _nt(term) -> str:
+    """Serialize an rdflib term as N-Triples.
+
+    rdflib's ``Literal.n3()`` emits Turtle triple-quoted strings for values
+    containing newlines, which is not valid N-Triples, so literals are
+    escaped here; other terms use ``n3()``.
+    """
+    if isinstance(term, Literal):
+        lex = f'"{str(term).translate(_NT_ESCAPES)}"'
+        if term.language:
+            return f"{lex}@{term.language}"
+        if term.datatype:
+            return f"{lex}^^<{term.datatype}>"
+        return lex
+    return term.n3()
 
 
 class NTriplesSink(TripleSink):
@@ -107,11 +127,12 @@ class NTriplesSink(TripleSink):
             raise FileExistsError("There was an error during file opening.")
 
         for s, p, o in self._buffer:
-            self._file.write(f"{s.n3()} {p.n3()} {o.n3()} .\n")
-            self._triples_in_current_file += 1
-
+            # Rotate lazily, before writing, so no empty trailing part is left.
             if self._triples_in_current_file >= self.max_triples_per_file:
                 self._open_new_file()
+
+            self._file.write(f"{s.n3()} {p.n3()} {_nt(o)} .\n")
+            self._triples_in_current_file += 1
 
         self._buffer.clear()
 

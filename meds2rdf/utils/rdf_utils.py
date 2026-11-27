@@ -35,6 +35,14 @@ NT_IRI_REGEX = re.compile(r"^[a-zA-Z][a-zA-Z0-9+.-]*:[^\s<>\"{}|^`\\]+$")
 
 SAFE_CHARS = re.compile(r"[^A-Za-z0-9._-]")
 
+# characters that may not appear in an N-Triples IRIREF (percent-encoded when found)
+IRI_UNSAFE = re.compile(r'[\x00-\x20<>"{}|^`\\]')
+
+
+def _encode_iri_chars(s: str) -> str:
+    """Percent-encode only the characters that are illegal in an IRI."""
+    return IRI_UNSAFE.sub(lambda m: "".join(f"%{b:02X}" for b in m.group().encode("utf-8")), s)
+
 
 def is_valid_nt_iri(iri: str) -> bool:
     return bool(NT_IRI_REGEX.match(iri))
@@ -81,7 +89,8 @@ def curie_to_uri(
             prefix, local = curie.split(sep, 1)
             prefix = prefix.upper()
             if prefix in prefix_map:
-                return URIRef(f"{prefix_map[prefix].rstrip('/')}/{local}")
+                # percent-encode characters not allowed in an IRI (spaces, <>, "...)
+                return URIRef(f"{prefix_map[prefix].rstrip('/')}/{_encode_iri_chars(local)}")
 
     if is_valid_nt_iri(curie):
         return URIRef(curie)

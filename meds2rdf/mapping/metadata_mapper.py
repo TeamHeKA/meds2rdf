@@ -7,7 +7,16 @@ from rdflib.namespace import DCAT, PROV, RDF, RDFS, XSD
 from rdflib.namespace import DCTERMS as DCT
 
 from ..namespace import MEDS, MEDS_INSTANCES
-from ..utils.rdf_utils import to_literal
+from ..utils.rdf_utils import _encode_iri_chars, to_literal
+
+
+def _first(d: dict, key: str):
+    """First value of column `key`, or None when absent or null."""
+    col = d.get(key)
+    if col is None or col.len() == 0:
+        return None
+    return col[0]
+
 
 # Mapping for simple literal properties (dataset-level)
 # NOTE: ETL fields are handled separately (as a prov:Activity)
@@ -51,14 +60,14 @@ def map_dataset_metadata_df(
 
     # ---- Repeated literal column lists ----
     for field, (prop, dtype) in _column_list_dict.items():
-        if field in _dict and _dict[field].len() > 0:
-            values = _dict[field][0].to_list()
-            for v in values:
-                yield (dataset_uri, prop, to_literal(v, dtype))
+        if field in _dict and _dict[field].len() > 0 and _dict[field][0] is not None:
+            for v in _dict[field][0].to_list():
+                if v is not None:
+                    yield (dataset_uri, prop, to_literal(v, dtype))
 
     # ---- Dataset version ----
     if "dataset_version" in _dict and _dict["dataset_version"][0] is not None:
-        version_uri = URIRef(f"{dataset_uri}_{_dict['dataset_version'][0]}")
+        version_uri = URIRef(f"{dataset_uri}_{_encode_iri_chars(str(_dict['dataset_version'][0]))}")
         yield (dataset_uri, DCT.hasVersion, version_uri)
 
     # ---- License ----
@@ -69,14 +78,16 @@ def map_dataset_metadata_df(
         yield (dataset_uri, DCT.license, license_uri)
 
     # ---- Distribution ----
-    if (location := _dict.get("location_uri")) is not None:
+    if _first(_dict, "location_uri") is not None:
+        location = _dict["location_uri"]
         dist_uri = URIRef(MEDS_INSTANCES[f"distribution/{uuid.uuid4()}"])
         yield (dist_uri, RDF.type, DCAT.Distribution)
         try:
             yield (dist_uri, DCAT.downloadURL, URIRef(location[0]))
         except Exception:
             yield (dist_uri, DCAT.downloadURL, to_literal(location[0], XSD.anyURI))
-        if (description := _dict.get("description_uri")) is not None:
+        if _first(_dict, "description_uri") is not None:
+            description = _dict["description_uri"]
             try:
                 yield (dist_uri, DCAT.accessURL, URIRef(description[0]))
             except Exception:
@@ -88,15 +99,17 @@ def map_dataset_metadata_df(
     yield (activity_uri, RDF.type, PROV.Activity)
     yield (dataset_uri, PROV.wasGeneratedBy, activity_uri)
 
-    if (etl_name := _dict.get("etl_name")) is not None:
-        yield (activity_uri, RDFS.label, to_literal(etl_name[0], XSD.string))
-    if (etl_version := _dict.get("etl_version")) is not None:
-        yield (activity_uri, DCT.hasVersion, URIRef(f"{activity_uri}_{etl_version[0]}"))
+    if (etl_name := _first(_dict, "etl_name")) is not None:
+        yield (activity_uri, RDFS.label, to_literal(etl_name, XSD.string))
+    if (etl_version := _first(_dict, "etl_version")) is not None:
+        yield (
+            activity_uri,
+            DCT.hasVersion,
+            URIRef(f"{activity_uri}_{_encode_iri_chars(str(etl_version))}"),
+        )
 
-    notes = ""
-    if (etl_notes := _dict.get("etl_notes")) is not None:
-        notes = etl_notes[0]
-    if (protocol_notes := _dict.get("protocol_notes")) is not None:
-        notes = "\n\n".join([notes, protocol_notes[0]])
+    notes = "\n\n".join(
+        n for n in (_first(_dict, "etl_notes"), _first(_dict, "protocol_notes")) if n
+    )
     if notes != "":
         yield (activity_uri, RDFS.comment, to_literal(notes, XSD.string))

@@ -83,7 +83,7 @@ class MedsRDFConverter:
                 data=load_json(self.meds_root / "metadata" / "dataset.json"),
                 map_fn=map_dataset_metadata_df,
                 sink=sink,
-                entity="DatasetMetdata",
+                entity="DatasetMetadata",
                 batch_size=cfg.batch_size,
                 provenance=dataset_uri,
             )
@@ -124,7 +124,13 @@ class MedsRDFConverter:
         # 5. Labels
         if MEDSSchema.LABELS in cfg.schemas:
             map_on_load(
-                data=load_parquets(load_task_labels_files(self.meds_root / "labels")),
+                data=load_parquets(
+                    [
+                        f
+                        for files in load_task_labels_files(self.meds_root / "labels")
+                        for f in files
+                    ]
+                ),
                 entity="Label",
                 map_fn=map_label_df,
                 batch_size=cfg.batch_size,
