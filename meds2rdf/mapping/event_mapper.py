@@ -46,19 +46,18 @@ def map_event_df(
         row_index = offset + i
         event_uri = URIRef(MEDS_INSTANCES[f"event/{sid}_{row_index}"])
 
+        # meds:hasSubject is emitted in every mode; PARTIAL/FULL add a
+        # code-specific subject -> event relation on top of it.
         yield (event_uri, RDF.type, MEDS.Event)
         yield (event_uri, MEDS.hasSubject, subject_uri)
 
-        row_index = offset + i
-        event_uri = URIRef(MEDS_INSTANCES[f"event/{sid}_{row_index}"])
-
-        yield (event_uri, RDF.type, MEDS.Event)
-
+        # Only used to derive predicate local names (PARTIAL/FULL, unchanged);
+        # literals keep the original code string.
         event_code_rel = sanitize_text(str(code_str))
 
         match mode:
             case SemanticMode.BASE:
-                yield (event_uri, MEDS.hasSubject, subject_uri)
+                pass
 
             case SemanticMode.PARTIAL:
                 p_code = to_camel_case(f"has_{event_code_rel.split('//')[0]}")
@@ -80,16 +79,16 @@ def map_event_df(
         yield (
             event_uri,
             MEDS.codeString,
-            Literal(sanitize_text(str(code_str)), datatype=XSD.string),
+            Literal(str(code_str), datatype=XSD.string),
         )
 
         # ---- Cached code generation ----
+        # Code node triples are emitted once per batch, not once per event.
         if code_str not in code_cache:
             code_cache[code_str] = generate_code(code_str=code_str)
+            yield from code_cache[code_str][1]
 
-        code_uri, code_triples = code_cache[code_str]
-
-        yield from code_triples
+        code_uri, _ = code_cache[code_str]
 
         yield (event_uri, MEDS.hasCode, code_uri)
 
@@ -114,5 +113,5 @@ def map_event_df(
                 yield (
                     event_uri,
                     MEDS.textValue,
-                    Literal(sanitize_text(text_val), datatype=XSD.string),
+                    Literal(str(text_val), datatype=XSD.string),
                 )

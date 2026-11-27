@@ -5,7 +5,7 @@ from rdflib import Literal, URIRef
 from rdflib.namespace import PROV, XSD
 
 from ..namespace import MEDS
-from ..utils.rdf_utils import generate_code, generate_code_uri, sanitize_text
+from ..utils.rdf_utils import generate_code
 
 
 def _map_parent_codes(value, code_cache, internal_code_uri):
@@ -13,17 +13,16 @@ def _map_parent_codes(value, code_cache, internal_code_uri):
 
     for parent_code in parent_codes:
         if parent_code:
-            # Cache external codes too
-            parent_code = sanitize_text(parent_code)
+            # Cache external codes too; their node triples are emitted only
+            # the first time the parent is seen in the batch.
             if parent_code not in code_cache:
                 code_cache[parent_code] = generate_code(
                     code_str=parent_code,
                     external=True,
                 )
+                yield from code_cache[parent_code][1]
 
-            parent_uri, parent_triples = code_cache[parent_code]
-
-            yield from parent_triples
+            parent_uri, _ = code_cache[parent_code]
 
             yield (
                 internal_code_uri,
@@ -55,8 +54,15 @@ def map_code_df(
 
     # ---- Row streaming iteration ----
     for _, row in enumerate(df.iter_rows()):
-        code = sanitize_text(row[col_idx["code"]])
-        code_uri = generate_code_uri(code_str=code)
+        # Same IRI and node triples as map_event_df, so the metadata is
+        # attached to the code node that the events point to.
+        code = row[col_idx["code"]]
+        if code is None:
+            continue
+        if code not in code_cache:
+            code_cache[code] = generate_code(code_str=code)
+            yield from code_cache[code][1]
+        code_uri, _ = code_cache[code]
 
         # ---- Optional description ----
         if has_description:
@@ -65,7 +71,7 @@ def map_code_df(
                 yield (
                     code_uri,
                     MEDS.codeDescription,
-                    Literal(sanitize_text(str(desc)), datatype=XSD.string),
+                    Literal(str(desc), datatype=XSD.string),
                 )
 
         # ---- Optional parent codes ----

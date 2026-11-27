@@ -37,7 +37,7 @@ def map_on_load(
     # num_slices = math.ceil(total_rows / batch_size)
 
     with tqdm(
-        total=total_rows, desc=f"Processing {entity}", dynamic_ncols=True, unit="batch"
+        total=total_rows, desc=f"Processing {entity}", dynamic_ncols=True, unit="rows"
     ) as pbar:
         for f in data:
             for batch in f.collect(engine="streaming").iter_slices(n_rows=batch_size):
@@ -47,7 +47,7 @@ def map_on_load(
                 sink.add_many(map_fn(batch, offset, provenance, mode))
 
                 offset += len(batch)
-            pbar.update(offset)
+                pbar.update(len(batch))
 
 
 def raise_if_not_exist(path: Path):
